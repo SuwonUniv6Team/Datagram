@@ -48,6 +48,8 @@
             // 
             // txtPath
             // 
+            this.txtPath.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.txtPath.Font = new System.Drawing.Font("굴림", 16.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.txtPath.Location = new System.Drawing.Point(143, 23);
             this.txtPath.Name = "txtPath";
@@ -56,6 +58,7 @@
             // 
             // btnLoad
             // 
+            this.btnLoad.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.btnLoad.BackColor = System.Drawing.SystemColors.GradientInactiveCaption;
             this.btnLoad.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnLoad.Location = new System.Drawing.Point(1021, 12);
@@ -67,6 +70,9 @@
             // 
             // picMain
             // 
+            this.picMain.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.picMain.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.picMain.Location = new System.Drawing.Point(12, 82);
             this.picMain.Name = "picMain";
@@ -77,6 +83,7 @@
             // 
             // prgAngle
             // 
+            this.prgAngle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.prgAngle.Location = new System.Drawing.Point(1021, 101);
             this.prgAngle.Name = "prgAngle";
             this.prgAngle.Size = new System.Drawing.Size(250, 42);
@@ -84,6 +91,7 @@
             // 
             // prgThrottle
             // 
+            this.prgThrottle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.prgThrottle.Location = new System.Drawing.Point(1021, 169);
             this.prgThrottle.Name = "prgThrottle";
             this.prgThrottle.Size = new System.Drawing.Size(250, 41);
@@ -101,6 +109,7 @@
             // 
             // lblAngleName
             // 
+            this.lblAngleName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblAngleName.AutoSize = true;
             this.lblAngleName.Font = new System.Drawing.Font("굴림", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.lblAngleName.Location = new System.Drawing.Point(957, 115);
@@ -111,6 +120,7 @@
             // 
             // lblThrottleName
             // 
+            this.lblThrottleName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblThrottleName.AutoSize = true;
             this.lblThrottleName.Font = new System.Drawing.Font("굴림", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.lblThrottleName.Location = new System.Drawing.Point(957, 185);
@@ -121,6 +131,8 @@
             // 
             // lstFrames
             // 
+            this.lstFrames.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.lstFrames.FormattingEnabled = true;
             this.lstFrames.ItemHeight = 15;
             this.lstFrames.Location = new System.Drawing.Point(960, 233);
@@ -130,6 +142,8 @@
             // 
             // trackFrame
             // 
+            this.trackFrame.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
             this.trackFrame.Location = new System.Drawing.Point(12, 468);
             this.trackFrame.Name = "trackFrame";
             this.trackFrame.Size = new System.Drawing.Size(1259, 56);
@@ -137,6 +151,7 @@
             // 
             // btnFilter
             // 
+            this.btnFilter.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnFilter.BackColor = System.Drawing.Color.LightGray;
             this.btnFilter.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnFilter.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
@@ -149,6 +164,7 @@
             // 
             // btnDelete
             // 
+            this.btnDelete.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.btnDelete.BackColor = System.Drawing.Color.LightGray;
             this.btnDelete.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnDelete.ForeColor = System.Drawing.Color.Red;
@@ -161,6 +177,7 @@
             // 
             // btnTrain
             // 
+            this.btnTrain.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnTrain.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
             this.btnTrain.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnTrain.ForeColor = System.Drawing.SystemColors.Desktop;
@@ -173,9 +190,10 @@
             // 
             // txtLog
             // 
-            this.txtLog.Location = new System.Drawing.Point(12, 614);
+            this.txtLog.Dock = System.Windows.Forms.DockStyle.Bottom;
+            this.txtLog.Location = new System.Drawing.Point(0, 626);
             this.txtLog.Name = "txtLog";
-            this.txtLog.Size = new System.Drawing.Size(1248, 106);
+            this.txtLog.Size = new System.Drawing.Size(1283, 106);
             this.txtLog.TabIndex = 13;
             this.txtLog.Text = "";
             // 
@@ -199,6 +217,7 @@
             this.Controls.Add(this.picMain);
             this.Controls.Add(this.btnLoad);
             this.Controls.Add(this.txtPath);
+            this.MinimumSize = new System.Drawing.Size(1000, 700);
             this.Name = "Form1";
             this.Text = "Datagram";
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).EndInit();
