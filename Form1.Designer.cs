@@ -28,13 +28,134 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.components = new System.ComponentModel.Container();
+            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.btnLoad = new System.Windows.Forms.Button();
+            this.picMain = new System.Windows.Forms.PictureBox();
+            this.prgAngle = new System.Windows.Forms.ProgressBar();
+            this.prgThrottle = new System.Windows.Forms.ProgressBar();
+            this.lblMain = new System.Windows.Forms.Label();
+            this.lblAngleName = new System.Windows.Forms.Label();
+            this.lblThrottleName = new System.Windows.Forms.Label();
+            this.lstFrames = new System.Windows.Forms.ListBox();
+            ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
+            this.SuspendLayout();
+            // 
+            // textBox1
+            // 
+            this.textBox1.Font = new System.Drawing.Font("굴림", 16.2F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.textBox1.Location = new System.Drawing.Point(143, 23);
+            this.textBox1.Name = "textBox1";
+            this.textBox1.Size = new System.Drawing.Size(808, 39);
+            this.textBox1.TabIndex = 0;
+            // 
+            // btnLoad
+            // 
+            this.btnLoad.BackColor = System.Drawing.SystemColors.GradientInactiveCaption;
+            this.btnLoad.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.btnLoad.Location = new System.Drawing.Point(1021, 12);
+            this.btnLoad.Name = "btnLoad";
+            this.btnLoad.Size = new System.Drawing.Size(116, 62);
+            this.btnLoad.TabIndex = 1;
+            this.btnLoad.Text = "폴더 열기";
+            this.btnLoad.UseVisualStyleBackColor = false;
+            // 
+            // picMain
+            // 
+            this.picMain.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.picMain.Location = new System.Drawing.Point(12, 82);
+            this.picMain.Name = "picMain";
+            this.picMain.Size = new System.Drawing.Size(939, 380);
+            this.picMain.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
+            this.picMain.TabIndex = 2;
+            this.picMain.TabStop = false;
+            // 
+            // prgAngle
+            // 
+            this.prgAngle.Location = new System.Drawing.Point(1021, 101);
+            this.prgAngle.Name = "prgAngle";
+            this.prgAngle.Size = new System.Drawing.Size(250, 42);
+            this.prgAngle.TabIndex = 3;
+            // 
+            // prgThrottle
+            // 
+            this.prgThrottle.Location = new System.Drawing.Point(1021, 169);
+            this.prgThrottle.Name = "prgThrottle";
+            this.prgThrottle.Size = new System.Drawing.Size(250, 41);
+            this.prgThrottle.TabIndex = 4;
+            // 
+            // lblMain
+            // 
+            this.lblMain.AutoSize = true;
+            this.lblMain.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.lblMain.Location = new System.Drawing.Point(7, 32);
+            this.lblMain.Name = "lblMain";
+            this.lblMain.Size = new System.Drawing.Size(117, 20);
+            this.lblMain.TabIndex = 5;
+            this.lblMain.Text = "Catalog Path";
+            // 
+            // lblAngleName
+            // 
+            this.lblAngleName.AutoSize = true;
+            this.lblAngleName.Font = new System.Drawing.Font("굴림", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.lblAngleName.Location = new System.Drawing.Point(957, 115);
+            this.lblAngleName.Name = "lblAngleName";
+            this.lblAngleName.Size = new System.Drawing.Size(48, 15);
+            this.lblAngleName.TabIndex = 6;
+            this.lblAngleName.Text = "Angle:";
+            // 
+            // lblThrottleName
+            // 
+            this.lblThrottleName.AutoSize = true;
+            this.lblThrottleName.Font = new System.Drawing.Font("굴림", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.lblThrottleName.Location = new System.Drawing.Point(957, 185);
+            this.lblThrottleName.Name = "lblThrottleName";
+            this.lblThrottleName.Size = new System.Drawing.Size(60, 15);
+            this.lblThrottleName.TabIndex = 7;
+            this.lblThrottleName.Text = "Throttle:";
+            // 
+            // lstFrames
+            // 
+            this.lstFrames.FormattingEnabled = true;
+            this.lstFrames.ItemHeight = 15;
+            this.lstFrames.Location = new System.Drawing.Point(960, 233);
+            this.lstFrames.Name = "lstFrames";
+            this.lstFrames.Size = new System.Drawing.Size(311, 229);
+            this.lstFrames.TabIndex = 8;
+            // 
+            // Form1
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "Form1";
+            this.BackColor = System.Drawing.SystemColors.ControlLight;
+            this.ClientSize = new System.Drawing.Size(1283, 601);
+            this.Controls.Add(this.lstFrames);
+            this.Controls.Add(this.lblThrottleName);
+            this.Controls.Add(this.lblAngleName);
+            this.Controls.Add(this.lblMain);
+            this.Controls.Add(this.prgThrottle);
+            this.Controls.Add(this.prgAngle);
+            this.Controls.Add(this.picMain);
+            this.Controls.Add(this.btnLoad);
+            this.Controls.Add(this.textBox1);
+            this.Name = "Form1";
+            this.Text = "Datagram";
+            ((System.ComponentModel.ISupportInitialize)(this.picMain)).EndInit();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
         }
 
         #endregion
+
+        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.Button btnLoad;
+        private System.Windows.Forms.PictureBox picMain;
+        private System.Windows.Forms.ProgressBar prgAngle;
+        private System.Windows.Forms.ProgressBar prgThrottle;
+        private System.Windows.Forms.Label lblMain;
+        private System.Windows.Forms.Label lblAngleName;
+        private System.Windows.Forms.Label lblThrottleName;
+        private System.Windows.Forms.ListBox lstFrames;
     }
 }
 
