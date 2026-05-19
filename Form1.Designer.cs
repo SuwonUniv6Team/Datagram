@@ -42,6 +42,10 @@
             this.btnDelete = new System.Windows.Forms.Button();
             this.btnTrain = new System.Windows.Forms.Button();
             this.txtLog = new System.Windows.Forms.RichTextBox();
+            this.btnplay = new System.Windows.Forms.Button();
+            this.btnpurse = new System.Windows.Forms.Button();
+            this.btnnext = new System.Windows.Forms.Button();
+            this.btntrace = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.SuspendLayout();
@@ -155,7 +159,7 @@
             this.btnFilter.BackColor = System.Drawing.Color.LightGray;
             this.btnFilter.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnFilter.ForeColor = System.Drawing.SystemColors.ActiveCaptionText;
-            this.btnFilter.Location = new System.Drawing.Point(12, 530);
+            this.btnFilter.Location = new System.Drawing.Point(11, 551);
             this.btnFilter.Name = "btnFilter";
             this.btnFilter.Size = new System.Drawing.Size(153, 60);
             this.btnFilter.TabIndex = 10;
@@ -168,7 +172,7 @@
             this.btnDelete.BackColor = System.Drawing.Color.LightGray;
             this.btnDelete.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnDelete.ForeColor = System.Drawing.Color.Red;
-            this.btnDelete.Location = new System.Drawing.Point(171, 530);
+            this.btnDelete.Location = new System.Drawing.Point(170, 551);
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(143, 60);
             this.btnDelete.TabIndex = 11;
@@ -181,7 +185,7 @@
             this.btnTrain.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(192)))), ((int)(((byte)(255)))), ((int)(((byte)(192)))));
             this.btnTrain.Font = new System.Drawing.Font("굴림", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnTrain.ForeColor = System.Drawing.SystemColors.Desktop;
-            this.btnTrain.Location = new System.Drawing.Point(1041, 530);
+            this.btnTrain.Location = new System.Drawing.Point(1034, 551);
             this.btnTrain.Name = "btnTrain";
             this.btnTrain.Size = new System.Drawing.Size(219, 60);
             this.btnTrain.TabIndex = 12;
@@ -197,12 +201,64 @@
             this.txtLog.TabIndex = 13;
             this.txtLog.Text = "";
             // 
+            // btnplay
+            // 
+            this.btnplay.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnplay.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.btnplay.Location = new System.Drawing.Point(444, 507);
+            this.btnplay.Name = "btnplay";
+            this.btnplay.Size = new System.Drawing.Size(74, 49);
+            this.btnplay.TabIndex = 14;
+            this.btnplay.Text = "▶";
+            this.btnplay.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnplay.UseVisualStyleBackColor = true;
+            // 
+            // btnpurse
+            // 
+            this.btnpurse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnpurse.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.btnpurse.Location = new System.Drawing.Point(537, 507);
+            this.btnpurse.Name = "btnpurse";
+            this.btnpurse.Size = new System.Drawing.Size(70, 49);
+            this.btnpurse.TabIndex = 15;
+            this.btnpurse.Text = "⏸";
+            this.btnpurse.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnpurse.UseVisualStyleBackColor = true;
+            // 
+            // btnnext
+            // 
+            this.btnnext.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnnext.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.btnnext.Location = new System.Drawing.Point(627, 507);
+            this.btnnext.Name = "btnnext";
+            this.btnnext.Size = new System.Drawing.Size(115, 49);
+            this.btnnext.TabIndex = 16;
+            this.btnnext.Text = "▶▶";
+            this.btnnext.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btnnext.UseVisualStyleBackColor = true;
+            // 
+            // btntrace
+            // 
+            this.btntrace.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btntrace.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
+            this.btntrace.Location = new System.Drawing.Point(358, 507);
+            this.btntrace.Name = "btntrace";
+            this.btntrace.Size = new System.Drawing.Size(64, 49);
+            this.btntrace.TabIndex = 17;
+            this.btntrace.Text = "◀";
+            this.btntrace.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.btntrace.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlLight;
             this.ClientSize = new System.Drawing.Size(1283, 732);
+            this.Controls.Add(this.btntrace);
+            this.Controls.Add(this.btnnext);
+            this.Controls.Add(this.btnpurse);
+            this.Controls.Add(this.btnplay);
             this.Controls.Add(this.txtLog);
             this.Controls.Add(this.btnTrain);
             this.Controls.Add(this.btnDelete);
@@ -243,6 +299,10 @@
         private System.Windows.Forms.Button btnDelete;
         private System.Windows.Forms.Button btnTrain;
         private System.Windows.Forms.RichTextBox txtLog;
+        private System.Windows.Forms.Button btnplay;
+        private System.Windows.Forms.Button btnpurse;
+        private System.Windows.Forms.Button btnnext;
+        private System.Windows.Forms.Button btntrace;
     }
 }
 
