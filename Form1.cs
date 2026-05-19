@@ -30,6 +30,11 @@ namespace Datagram
             btnpurse.Click += BtnPause_Click;
             btnnext.Click += BtnNext_Click;
             btntrace.Click += BtnTrace_Click;
+            btnFilter.Click += BtnFilter_Click;
+            btnDelete.Click += BtnDelete_Click;
+
+            // 다중 선택 지원
+            lstFrames.SelectionMode = SelectionMode.MultiExtended;
 
             // Timer 초기화 (약 10 FPS 설정)
             playbackTimer = new Timer();
@@ -39,10 +44,16 @@ namespace Datagram
 
         private void BtnPlay_Click(object sender, EventArgs e)
         {
-            if (frames.Count > 0 && lstFrames.SelectedIndex < frames.Count - 1)
+            if (frames.Count == 0) return;
+
+            // 이미 마지막 프레임인 경우 처음부터 다시 재생
+            if (lstFrames.SelectedIndex >= frames.Count - 1)
             {
-                playbackTimer.Start();
+                lstFrames.ClearSelected();
+                lstFrames.SelectedIndex = 0;
             }
+
+            playbackTimer.Start();
         }
 
         private void BtnPause_Click(object sender, EventArgs e)
@@ -55,7 +66,9 @@ namespace Datagram
             playbackTimer.Stop(); // 수동 이동시 재생 멈춤
             if (frames.Count > 0 && lstFrames.SelectedIndex < frames.Count - 1)
             {
-                lstFrames.SelectedIndex += 1;
+                int nextIdx = lstFrames.SelectedIndex < 0 ? 0 : lstFrames.SelectedIndex + 1;
+                lstFrames.ClearSelected();
+                lstFrames.SelectedIndex = nextIdx;
             }
         }
 
@@ -64,19 +77,130 @@ namespace Datagram
             playbackTimer.Stop(); // 수동 이동시 재생 멈춤
             if (frames.Count > 0 && lstFrames.SelectedIndex > 0)
             {
-                lstFrames.SelectedIndex -= 1;
+                int prevIdx = lstFrames.SelectedIndex - 1;
+                lstFrames.ClearSelected();
+                lstFrames.SelectedIndex = prevIdx;
             }
         }
 
         private void PlaybackTimer_Tick(object sender, EventArgs e)
         {
-            if (lstFrames.SelectedIndex < frames.Count - 1)
+            if (frames.Count == 0)
             {
-                lstFrames.SelectedIndex += 1;
+                playbackTimer.Stop();
+                return;
+            }
+
+            int currentIdx = lstFrames.SelectedIndex;
+            if (currentIdx < 0) currentIdx = 0;
+
+            if (currentIdx < frames.Count - 1)
+            {
+                lstFrames.ClearSelected();
+                lstFrames.SelectedIndex = currentIdx + 1;
             }
             else
             {
                 playbackTimer.Stop(); // 마지막 프레임에 도달하면 정지
+            }
+        }
+
+        private void BtnFilter_Click(object sender, EventArgs e)
+        {
+            if (frames == null || frames.Count == 0) return;
+
+            int beforeCount = frames.Count;
+
+            // Throttle <= 0.05 인 프레임 제거
+            frames = frames.Where(f => f.Throttle > 0.05).ToList();
+
+            int afterCount = frames.Count;
+
+            // 리스트 및 프레임 번호 갱신
+            lstFrames.Items.Clear();
+            for (int i = 0; i < frames.Count; i++)
+            {
+                frames[i].FrameIndex = i;
+                lstFrames.Items.Add(frames[i]);
+            }
+
+            // 트랙바 및 화면 갱신
+            if (frames.Count > 0)
+            {
+                trackFrame.Maximum = frames.Count - 1;
+                trackFrame.Value = 0;
+                lstFrames.SelectedIndex = 0;
+            }
+            else
+            {
+                trackFrame.Maximum = 0;
+                trackFrame.Value = 0;
+                if (picMain.Image != null)
+                {
+                    picMain.Image.Dispose();
+                    picMain.Image = null;
+                }
+                lblAngleName.Text = "Angle: ";
+                lblThrottleName.Text = "Throttle: ";
+                prgAngle.Value = 0;
+                prgThrottle.Value = 0;
+            }
+
+            MessageBox.Show($"필터링 전: {beforeCount}개\n필터링 후: {afterCount}개", "필터링 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void BtnDelete_Click(object sender, EventArgs e)
+        {
+            if (lstFrames.SelectedIndices.Count == 0 || frames.Count == 0) return;
+
+            var result = MessageBox.Show("현재 프레임을 삭제하시겠습니까?", "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (result == DialogResult.Yes)
+            {
+                // 인덱스가 꼬이지 않도록 내림차순 정렬 후 삭제
+                var selectedIndices = lstFrames.SelectedIndices.Cast<int>().OrderByDescending(i => i).ToList();
+                int nextIndex = selectedIndices.Min(); // 삭제할 가장 첫 번째 인덱스 저장
+
+                foreach (int idx in selectedIndices)
+                {
+                    frames.RemoveAt(idx);
+                }
+
+                // 리스트 및 프레임 번호 갱신
+                lstFrames.Items.Clear();
+                for (int i = 0; i < frames.Count; i++)
+                {
+                    frames[i].FrameIndex = i;
+                    lstFrames.Items.Add(frames[i]);
+                }
+
+                if (frames.Count > 0)
+                {
+                    trackFrame.Maximum = frames.Count - 1;
+
+                    // 다음 프레임 인덱스 보정
+                    if (nextIndex >= frames.Count)
+                    {
+                        nextIndex = frames.Count - 1;
+                    }
+
+                    lstFrames.SelectedIndex = nextIndex;
+                    trackFrame.Value = nextIndex;
+                }
+                else
+                {
+                    // 데이터가 0개가 된 경우 초기화
+                    trackFrame.Maximum = 0;
+                    trackFrame.Value = 0;
+                    if (picMain.Image != null)
+                    {
+                        picMain.Image.Dispose();
+                        picMain.Image = null;
+                    }
+                    lblAngleName.Text = "Angle: ";
+                    lblThrottleName.Text = "Throttle: ";
+                    prgAngle.Value = 0;
+                    prgThrottle.Value = 0;
+                }
             }
         }
 
@@ -140,9 +264,10 @@ namespace Datagram
                 trackFrame.Maximum = frames.Count - 1;
                 trackFrame.Value = 0;
 
-                foreach(var f in frames) 
-                { 
-                    lstFrames.Items.Add(f); 
+                for (int i = 0; i < frames.Count; i++)
+                {
+                    frames[i].FrameIndex = i;
+                    lstFrames.Items.Add(frames[i]);
                 }
 
                 // 첫 이미지 자동 출력
@@ -210,13 +335,14 @@ namespace Datagram
 
     public class FrameData
     {
+        public int FrameIndex { get; set; }
         public string ImagePath { get; set; }
         public double Angle { get; set; }
         public double Throttle { get; set; }
 
         public override string ToString()
         {
-            return ImagePath;
+            return $"[{FrameIndex}] {ImagePath}";
         }
     }
 }
