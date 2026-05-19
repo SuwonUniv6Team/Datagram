@@ -32,6 +32,7 @@ namespace Datagram
             btntrace.Click += BtnTrace_Click;
             btnFilter.Click += BtnFilter_Click;
             btnDelete.Click += BtnDelete_Click;
+            btnTrain.Click += BtnTrain_Click;
 
             // 다중 선택 지원
             lstFrames.SelectionMode = SelectionMode.MultiExtended;
@@ -40,6 +41,19 @@ namespace Datagram
             playbackTimer = new Timer();
             playbackTimer.Interval = 100; // 100ms 마다 틱
             playbackTimer.Tick += PlaybackTimer_Tick;
+        }
+
+        private void BtnTrain_Click(object sender, EventArgs e)
+        {
+            AddLog("AI 학습 시작");
+        }
+
+        private void AddLog(string message)
+        {
+            string time = DateTime.Now.ToString("HH:mm:ss");
+            txtLog.AppendText($"[{time}] {message}\r\n");
+            txtLog.SelectionStart = txtLog.Text.Length;
+            txtLog.ScrollToCaret();
         }
 
         private void BtnPlay_Click(object sender, EventArgs e)
@@ -53,11 +67,13 @@ namespace Datagram
                 lstFrames.SelectedIndex = 0;
             }
 
+            AddLog("자동재생 시작");
             playbackTimer.Start();
         }
 
         private void BtnPause_Click(object sender, EventArgs e)
         {
+            AddLog("자동재생 정지");
             playbackTimer.Stop();
         }
 
@@ -69,6 +85,7 @@ namespace Datagram
                 int nextIdx = lstFrames.SelectedIndex < 0 ? 0 : lstFrames.SelectedIndex + 1;
                 lstFrames.ClearSelected();
                 lstFrames.SelectedIndex = nextIdx;
+                AddLog($"프레임 이동: {nextIdx}번");
             }
         }
 
@@ -80,6 +97,7 @@ namespace Datagram
                 int prevIdx = lstFrames.SelectedIndex - 1;
                 lstFrames.ClearSelected();
                 lstFrames.SelectedIndex = prevIdx;
+                AddLog($"프레임 이동: {prevIdx}번");
             }
         }
 
@@ -146,6 +164,7 @@ namespace Datagram
                 prgThrottle.Value = 0;
             }
 
+            AddLog($"데이터 필터링 완료: {beforeCount}개 -> {afterCount}개");
             MessageBox.Show($"필터링 전: {beforeCount}개\n필터링 후: {afterCount}개", "필터링 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
@@ -164,6 +183,9 @@ namespace Datagram
                 {
                     frames.RemoveAt(idx);
                 }
+
+                string deletedStr = string.Join(", ", selectedIndices);
+                AddLog($"프레임 삭제 완료: {deletedStr}번");
 
                 // 리스트 및 프레임 번호 갱신
                 lstFrames.Items.Clear();
@@ -270,6 +292,7 @@ namespace Datagram
                     lstFrames.Items.Add(frames[i]);
                 }
 
+                AddLog($"데이터 로드 완료: {frames.Count}개");
                 // 첫 이미지 자동 출력
                 lstFrames.SelectedIndex = 0;
             }
