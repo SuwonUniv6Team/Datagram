@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -353,6 +354,59 @@ namespace Datagram
             {
                 txtLog.AppendText("이미지 불러오기 실패: " + ex.Message + "\n");
             }
+        }
+
+        private void btnTrain_Click(object sender, EventArgs e)
+        {
+            string imageFolder = txtPath.Text.Trim();
+
+            if (!Directory.Exists(imageFolder))
+            {
+                MessageBox.Show("폴더가 존재하지 않습니다.");
+                return;
+            }
+
+            string scriptPath = @"train_model.py";
+
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = "python",
+                Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            Process process = new Process();
+            process.StartInfo = psi;
+
+            process.OutputDataReceived += (s, args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                {
+                    Invoke(new Action(() =>
+                    {
+                        txtLog.AppendText(args.Data + Environment.NewLine);
+                    }));
+                }
+            };
+
+            process.ErrorDataReceived += (s, args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                {
+                    Invoke(new Action(() =>
+                    {
+                        txtLog.AppendText("[ERROR] " + args.Data + Environment.NewLine);
+                    }));
+                }
+            };
+
+            process.Start();
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
         }
     }
 
