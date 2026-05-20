@@ -366,7 +366,7 @@ namespace Datagram
                 return;
             }
 
-            string scriptPath = @"train_model.py";
+            string scriptPath = Path.Combine(Application.StartupPath, "train_model.py");
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
@@ -375,7 +375,8 @@ namespace Datagram
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(scriptPath)
             };
 
             Process process = new Process();
@@ -404,9 +405,45 @@ namespace Datagram
             };
 
             process.Start();
+            AddLog($"AI 학습 시작: {scriptPath}");
 
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+        }
+
+        private string GetScriptPath(string scriptName)
+        {
+            // 현재 실행 파일의 디렉토리
+            string exePath = Application.ExecutablePath;
+            string exeDir = Path.GetDirectoryName(exePath);
+
+            // 1. bin\Debug 또는 bin\Release 디렉토리에서 찾기
+            string scriptInBinDir = Path.Combine(exeDir, scriptName);
+            if (File.Exists(scriptInBinDir))
+                return scriptInBinDir;
+
+            // 2. 프로젝트 루트 디렉토리에서 찾기 (bin 상위 두 단계)
+            string projectRoot = Path.GetDirectoryName(Path.GetDirectoryName(exeDir));
+            string scriptInRoot = Path.Combine(projectRoot, scriptName);
+            if (File.Exists(scriptInRoot))
+                return scriptInRoot;
+
+            // 3. bin의 부모 디렉토리에서 찾기
+            string binParent = Path.GetDirectoryName(exeDir);
+            string scriptInBinParent = Path.Combine(binParent, scriptName);
+            if (File.Exists(scriptInBinParent))
+                return scriptInBinParent;
+
+            // 4. 사용자가 선택한 폴더에서 찾기
+            string imageFolder = txtPath.Text.Trim();
+            if (!string.IsNullOrEmpty(imageFolder))
+            {
+                string scriptInImageFolder = Path.Combine(imageFolder, scriptName);
+                if (File.Exists(scriptInImageFolder))
+                    return scriptInImageFolder;
+            }
+
+            return null;
         }
     }
 
