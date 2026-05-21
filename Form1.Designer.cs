@@ -203,6 +203,7 @@
             // 
             // btnplay
             // 
+            this.btnplay.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnplay.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnplay.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnplay.Location = new System.Drawing.Point(444, 507);
@@ -215,6 +216,7 @@
             // 
             // btnpurse
             // 
+            this.btnpurse.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnpurse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnpurse.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnpurse.Location = new System.Drawing.Point(537, 507);
@@ -227,6 +229,7 @@
             // 
             // btnnext
             // 
+            this.btnnext.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btnnext.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnnext.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnnext.Location = new System.Drawing.Point(627, 507);
@@ -239,6 +242,7 @@
             // 
             // btntrace
             // 
+            this.btntrace.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.btntrace.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btntrace.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btntrace.Location = new System.Drawing.Point(358, 507);
