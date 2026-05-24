@@ -366,7 +366,7 @@ namespace Datagram
                 return;
             }
 
-            string scriptPath = Path.Combine(Application.StartupPath, "train_model.py");
+            string scriptPath = Path.Combine(Application.StartupPath, "train.py");
 
             ProcessStartInfo psi = new ProcessStartInfo
             {
