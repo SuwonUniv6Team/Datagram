@@ -201,7 +201,7 @@
             this.btnTrain.TabIndex = 12;
             this.btnTrain.Text = "AI 학습 시작";
             this.btnTrain.UseVisualStyleBackColor = false;
-            this.btnTrain.Click += new System.EventHandler(this.btnTrain_Click);
+            this.btnTrain.Click += new System.EventHandler(this.BtnTrain_Click);
             // 
             // txtLog
             // 

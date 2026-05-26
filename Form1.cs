@@ -245,61 +245,224 @@ namespace Datagram
             frames.Clear();
             lstFrames.Items.Clear();
 
-            // catalog 파일 또는 json 파일 찾기
-            var files = Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly)
-                .Where(f => 
+            try
+            {
+                // 1단계: .catalog 또는 .catalog_manifest 파일 찾기
+                var catalogFiles = Directory.GetFiles(folderPath, "*.catalog", SearchOption.AllDirectories)
+                    .Union(Directory.GetFiles(folderPath, "*.catalog_manifest", SearchOption.AllDirectories))
+                    .Distinct()
+                    .ToList();
+
+                // 2단계: record_xxx.json 파일도 찾기 (tub 폴더)
+                var recordFiles = Directory.GetFiles(folderPath, "record_*.json", SearchOption.AllDirectories)
+                    .ToList();
+
+                // 3단계: catalog 파일이 있으면 파싱
+                if (catalogFiles.Count > 0)
                 {
-                    string name = Path.GetFileName(f).ToLower();
-                    return name.Contains("catalog") || name.StartsWith("record_") || name.EndsWith(".json");
-                }).ToArray();
+                    foreach (var catalogFile in catalogFiles)
+                    {
+                        LoadFramesFromCatalog(catalogFile, folderPath);
+                    }
+                }
 
-            if (files.Length == 0)
-            {
-                MessageBox.Show("선택한 폴더에서 catalog 파일을 찾을 수 없습니다.");
-                return;
+                // 4단계: record_*.json 파일이 없거나, catalog에서 프레임을 찾지 못한 경우에만 파싱
+                if (recordFiles.Count > 0 && frames.Count == 0)
+                {
+                    foreach (var recordFile in recordFiles)
+                    {
+                        LoadFramesFromJson(recordFile, Path.GetDirectoryName(recordFile));
+                    }
+                }
+
+                // 5단계: 데이터가 없으면 이미지 폴더 직접 스캔
+                if (frames.Count == 0)
+                {
+                    LoadFramesFromImages(folderPath);
+                }
+
+                if (frames.Count > 0)
+                {
+                    trackFrame.Minimum = 0;
+                    trackFrame.Maximum = frames.Count - 1;
+                    trackFrame.Value = 0;
+
+                    for (int i = 0; i < frames.Count; i++)
+                    {
+                        frames[i].FrameIndex = i;
+                        lstFrames.Items.Add(frames[i]);
+                    }
+
+                    AddLog($"데이터 로드 완료: {frames.Count}개 프레임");
+                    lstFrames.SelectedIndex = 0;
+                }
+                else
+                {
+                    MessageBox.Show("지원되는 데이터를 찾을 수 없습니다.\n\n지원 형식:\n- .catalog 파일\n- record_*.json 파일\n- 이미지 파일");
+                }
             }
-
-            foreach (var file in files)
+            catch (Exception ex)
             {
-                string[] lines = File.ReadAllLines(file);
+                AddLog($"데이터 로드 오류: {ex.Message}");
+                MessageBox.Show($"데이터 로드 중 오류 발생:\n{ex.Message}");
+            }
+        }
+
+        private void LoadFramesFromCatalog(string catalogFile, string basePath)
+        {
+            try
+            {
+                string catalogDir = Path.GetDirectoryName(catalogFile);
+                string[] lines = File.ReadAllLines(catalogFile, Encoding.UTF8);
+
                 foreach (string line in lines)
                 {
                     if (string.IsNullOrWhiteSpace(line)) continue;
 
-                    var imgMatch = Regex.Match(line, @"""cam/image_array""\s*:\s*""([^""]+)""");
-                    if (!imgMatch.Success) continue;
+                    // catalog 파일 형식: JSON 또는 텍스트
+                    FrameData fd = ParseCatalogLine(line, catalogDir, basePath);
+                    if (fd != null && !string.IsNullOrEmpty(fd.ImagePath))
+                    {
+                        frames.Add(fd);
+                    }
+                }
 
-                    var angleMatch = Regex.Match(line, @"""user/angle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
-                    var throttleMatch = Regex.Match(line, @"""user/throttle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                AddLog($"Catalog 파일 로드됨: {Path.GetFileName(catalogFile)} ({frames.Count}개)");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"Catalog 파싱 오류 ({catalogFile}): {ex.Message}");
+            }
+        }
 
+        private FrameData ParseCatalogLine(string line, string catalogDir, string basePath)
+        {
+            try
+            {
+                // DonkeyCar catalog 형식: JSON 라인
+                // 예: {"image_filename":"xxx.jpg","angle":0.5,"throttle":0.3}
+
+                // 1. 이미지 파일명 추출 시도
+                var imgMatch = Regex.Match(line, @"""image_filename""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+                if (!imgMatch.Success)
+                {
+                    imgMatch = Regex.Match(line, @"""image""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+                }
+                if (!imgMatch.Success)
+                {
+                    imgMatch = Regex.Match(line, @"""cam/image_array""\s*:\s*""([^""]+)""", RegexOptions.IgnoreCase);
+                }
+                if (!imgMatch.Success) return null;
+
+                string imagePath = imgMatch.Groups[1].Value;
+
+                // 2. angle 추출 (다양한 필드명 시도)
+                var angleMatch = Regex.Match(line, @"""user/angle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", RegexOptions.IgnoreCase);
+                if (!angleMatch.Success)
+                {
+                    angleMatch = Regex.Match(line, @"""angle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", RegexOptions.IgnoreCase);
+                }
+
+                // 3. throttle 추출
+                var throttleMatch = Regex.Match(line, @"""user/throttle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", RegexOptions.IgnoreCase);
+                if (!throttleMatch.Success)
+                {
+                    throttleMatch = Regex.Match(line, @"""throttle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)", RegexOptions.IgnoreCase);
+                }
+
+                FrameData fd = new FrameData();
+                fd.ImagePath = imagePath;
+                fd.Angle = angleMatch.Success ? double.Parse(angleMatch.Groups[1].Value) : 0.0;
+                fd.Throttle = throttleMatch.Success ? double.Parse(throttleMatch.Groups[1].Value) : 0.0;
+
+                return fd;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"라인 파싱 오류: {ex.Message}");
+                return null;
+            }
+        }
+
+        private void LoadFramesFromJson(string jsonFile, string basePath)
+        {
+            try
+            {
+                string[] lines = File.ReadAllLines(jsonFile);
+                
+                foreach (string line in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    FrameData fd = ParseCatalogLine(line, Path.GetDirectoryName(jsonFile), basePath);
+                    if (fd != null && !string.IsNullOrEmpty(fd.ImagePath))
+                    {
+                        frames.Add(fd);
+                    }
+                }
+
+                AddLog($"JSON 파일 로드됨: {Path.GetFileName(jsonFile)} ({frames.Count}개)");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"JSON 파싱 오류 ({jsonFile}): {ex.Message}");
+            }
+        }
+
+        private void LoadFramesFromImages(string folderPath)
+        {
+            try
+            {
+                // image 폴더 찾기
+                string imagesPath = Path.Combine(folderPath, "image");
+                if (!Directory.Exists(imagesPath))
+                {
+                    imagesPath = Path.Combine(folderPath, "images");
+                }
+                if (!Directory.Exists(imagesPath))
+                {
+                    imagesPath = folderPath;
+                }
+
+                // 모든 이미지 파일 찾기
+                var imageFiles = Directory.GetFiles(imagesPath, "*.*", SearchOption.AllDirectories)
+                    .Where(f => 
+                    {
+                        string ext = Path.GetExtension(f).ToLower();
+                        return ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".bmp";
+                    })
+                    .OrderBy(f => f)
+                    .ToArray();
+
+                // 이미지를 FrameData로 변환
+                foreach (var imgFile in imageFiles)
+                {
                     FrameData fd = new FrameData();
-                    fd.ImagePath = imgMatch.Groups[1].Value;
-                    if (angleMatch.Success) fd.Angle = double.Parse(angleMatch.Groups[1].Value);
-                    if (throttleMatch.Success) fd.Throttle = double.Parse(throttleMatch.Groups[1].Value);
-
+                    // .NET Framework에서 상대경로 생성
+                    Uri baseUri = new Uri(folderPath + Path.DirectorySeparatorChar);
+                    Uri fileUri = new Uri(imgFile);
+                    fd.ImagePath = baseUri.MakeRelativeUri(fileUri).ToString().Replace('/', Path.DirectorySeparatorChar);
+                    fd.Angle = 0.0;
+                    fd.Throttle = 0.0;
                     frames.Add(fd);
                 }
-            }
 
-            if (frames.Count > 0)
-            {
-                trackFrame.Minimum = 0;
-                trackFrame.Maximum = frames.Count - 1;
-                trackFrame.Value = 0;
-
-                for (int i = 0; i < frames.Count; i++)
+                if (imageFiles.Length > 0)
                 {
-                    frames[i].FrameIndex = i;
-                    lstFrames.Items.Add(frames[i]);
+                    AddLog($"이미지 폴더에서 {imageFiles.Length}개 이미지 로드됨");
                 }
-
-                AddLog($"데이터 로드 완료: {frames.Count}개");
-                // 첫 이미지 자동 출력
-                lstFrames.SelectedIndex = 0;
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("지원되는 데이터가 없습니다.");
+                AddLog($"이미지 로드 오류: {ex.Message}");
+            }
+        }
+
+        private void TrackFrame_Scroll(object sender, EventArgs e)
+        {
+            if (trackFrame.Value >= 0 && trackFrame.Value < frames.Count)
+            {
+                lstFrames.SelectedIndex = trackFrame.Value;
             }
         }
 
@@ -313,27 +476,26 @@ namespace Datagram
             }
         }
 
-        private void TrackFrame_Scroll(object sender, EventArgs e)
-        {
-            if (trackFrame.Value >= 0 && trackFrame.Value < frames.Count)
-            {
-                lstFrames.SelectedIndex = trackFrame.Value;
-            }
-        }
-
         private void ShowFrame(FrameData frame)
         {
             try
             {
-                string imgPath = Path.Combine(currentFolder, "images", frame.ImagePath);
+                string imgPath = Path.Combine(currentFolder, "image", frame.ImagePath);
                 if (!File.Exists(imgPath))
                 {
                     imgPath = Path.Combine(currentFolder, frame.ImagePath);
                 }
+                if (!File.Exists(imgPath))
+                {
+                    imgPath = Path.Combine(currentFolder, "images", frame.ImagePath);
+                }
 
                 if (File.Exists(imgPath))
                 {
-                    if (picMain.Image != null) picMain.Image.Dispose();
+                    if (picMain.Image != null)
+                    {
+                        picMain.Image.Dispose();
+                    }
                     picMain.Image = Image.FromFile(imgPath);
                 }
 
@@ -352,98 +514,8 @@ namespace Datagram
             }
             catch (Exception ex)
             {
-                txtLog.AppendText("이미지 불러오기 실패: " + ex.Message + "\n");
+                AddLog("이미지 불러오기 실패: " + ex.Message);
             }
-        }
-
-        private void btnTrain_Click(object sender, EventArgs e)
-        {
-            string imageFolder = txtPath.Text.Trim();
-
-            if (!Directory.Exists(imageFolder))
-            {
-                MessageBox.Show("폴더가 존재하지 않습니다.");
-                return;
-            }
-
-            string scriptPath = Path.Combine(Application.StartupPath, "train.py");
-
-            ProcessStartInfo psi = new ProcessStartInfo
-            {
-                FileName = "python",
-                Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(scriptPath)
-            };
-
-            Process process = new Process();
-            process.StartInfo = psi;
-
-            process.OutputDataReceived += (s, args) =>
-            {
-                if (!string.IsNullOrEmpty(args.Data))
-                {
-                    Invoke(new Action(() =>
-                    {
-                        txtLog.AppendText(args.Data + Environment.NewLine);
-                    }));
-                }
-            };
-
-            process.ErrorDataReceived += (s, args) =>
-            {
-                if (!string.IsNullOrEmpty(args.Data))
-                {
-                    Invoke(new Action(() =>
-                    {
-                        txtLog.AppendText("[ERROR] " + args.Data + Environment.NewLine);
-                    }));
-                }
-            };
-
-            process.Start();
-            AddLog($"AI 학습 시작: {scriptPath}");
-
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-        }
-
-        private string GetScriptPath(string scriptName)
-        {
-            // 현재 실행 파일의 디렉토리
-            string exePath = Application.ExecutablePath;
-            string exeDir = Path.GetDirectoryName(exePath);
-
-            // 1. bin\Debug 또는 bin\Release 디렉토리에서 찾기
-            string scriptInBinDir = Path.Combine(exeDir, scriptName);
-            if (File.Exists(scriptInBinDir))
-                return scriptInBinDir;
-
-            // 2. 프로젝트 루트 디렉토리에서 찾기 (bin 상위 두 단계)
-            string projectRoot = Path.GetDirectoryName(Path.GetDirectoryName(exeDir));
-            string scriptInRoot = Path.Combine(projectRoot, scriptName);
-            if (File.Exists(scriptInRoot))
-                return scriptInRoot;
-
-            // 3. bin의 부모 디렉토리에서 찾기
-            string binParent = Path.GetDirectoryName(exeDir);
-            string scriptInBinParent = Path.Combine(binParent, scriptName);
-            if (File.Exists(scriptInBinParent))
-                return scriptInBinParent;
-
-            // 4. 사용자가 선택한 폴더에서 찾기
-            string imageFolder = txtPath.Text.Trim();
-            if (!string.IsNullOrEmpty(imageFolder))
-            {
-                string scriptInImageFolder = Path.Combine(imageFolder, scriptName);
-                if (File.Exists(scriptInImageFolder))
-                    return scriptInImageFolder;
-            }
-
-            return null;
         }
     }
 
