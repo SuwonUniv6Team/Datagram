@@ -226,20 +226,58 @@ namespace Datagram
         {
             if (lstFrames.SelectedIndices.Count == 0 || frames.Count == 0) return;
 
-            var result = MessageBox.Show("현재 프레임을 삭제하시겠습니까?", "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            var result = MessageBox.Show("현재 프레임을 삭제하시겠습니까?\n(이미지와 데이터가 완전히 삭제됩니다)", 
+                "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
+                // 0. 먼저 모든 이미지를 메모리에서 해제
+                AddLog("🔓 메모리에서 이미지 해제 중...");
+                if (picMain.Image != null)
+                {
+                    picMain.Image.Dispose();
+                    picMain.Image = null;
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
+
                 // 인덱스가 꼬이지 않도록 내림차순 정렬 후 삭제
                 var selectedIndices = lstFrames.SelectedIndices.Cast<int>().OrderByDescending(i => i).ToList();
                 int nextIndex = selectedIndices.Min(); // 삭제할 가장 첫 번째 인덱스 저장
 
+                int imageDeletedCount = 0;
+                int recordDeletedCount = 0;
+
+                // 선택된 프레임 데이터와 이미지 파일 삭제
                 foreach (int idx in selectedIndices)
                 {
-                    frames.RemoveAt(idx);
+                    try
+                    {
+                        // 1. 이미지 파일 삭제
+                        if (DeleteImageFile(frames[idx]))
+                        {
+                            imageDeletedCount++;
+                        }
+
+                        // 2. Catalog/Record 파일에서 데이터 제거
+                        if (DeleteRecordData(frames[idx]))
+                        {
+                            recordDeletedCount++;
+                        }
+
+                        frames.RemoveAt(idx);
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog($"프레임 {idx} 삭제 실패: {ex.Message}");
+                    }
                 }
 
+                // 삭제 결과 메시지
                 string deletedStr = string.Join(", ", selectedIndices);
-                AddLog($"프레임 삭제 완료: {deletedStr}번");
+                AddLog($"━━━ 프레임 삭제 완료 ━━━");
+                AddLog($"  삭제 인덱스: {deletedStr}");
+                AddLog($"  이미지 파일: {imageDeletedCount}개 삭제");
+                AddLog($"  레코드 데이터: {recordDeletedCount}개 삭제");
 
                 // 리스트 및 프레임 번호 갱신
                 lstFrames.Items.Clear();
@@ -259,8 +297,11 @@ namespace Datagram
                         nextIndex = frames.Count - 1;
                     }
 
+                    lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                     lstFrames.SelectedIndex = nextIndex;
+                    lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
                     trackFrame.Value = nextIndex;
+                    ShowFrame(frames[nextIndex]);
                 }
                 else
                 {
@@ -277,6 +318,253 @@ namespace Datagram
                     prgAngle.Value = 0;
                     prgThrottle.Value = 0;
                 }
+            }
+        }
+
+        /// <summary>
+        /// 이미지 파일 삭제 (PictureBox에서 이미지 해제 후 삭제)
+        /// </summary>
+        private bool DeleteImageFile(FrameData frame)
+        {
+            string imgPath = null;
+            try
+            {
+                imgPath = Path.Combine(currentFolder, "images", frame.ImagePath);
+                if (File.Exists(imgPath))
+                {
+                    // 1. 현재 표시 중인 이미지를 메모리에서 해제
+                    AddLog($"🔓 PictureBox에서 이미지 해제 중...");
+                    if (picMain.Image != null)
+                    {
+                        picMain.Image.Dispose();
+                        picMain.Image = null;
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                    }
+
+                    // 2. 파일 삭제 시도
+                    AddLog($"🗑️  파일 삭제 중: {frame.ImagePath}");
+                    File.Delete(imgPath);
+                    AddLog($"✓ 이미지 삭제: {frame.ImagePath}");
+                    return true;
+                }
+                else
+                {
+                    AddLog($"⚠ 이미지 파일을 찾을 수 없음: {frame.ImagePath}");
+                    return false;
+                }
+            }
+            catch (IOException ioEx)
+            {
+                // 파일이 다른 프로세스에서 사용 중인 경우
+                AddLog($"⚠ 파일 잠금 상태 - 잠시 후 재시도 중...");
+                System.Threading.Thread.Sleep(500); // 0.5초 대기
+
+                try
+                {
+                    // 재시도
+                    File.Delete(imgPath);
+                    AddLog($"✓ 이미지 삭제 (재시도 성공): {frame.ImagePath}");
+                    return true;
+                }
+                catch (Exception retryEx)
+                {
+                    AddLog($"✗ 파일 잠금 해제 실패: {retryEx.Message}");
+                    throw new Exception($"파일이 사용 중입니다. 다시 시도해주세요: {frame.ImagePath}");
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                AddLog($"✗ 파일 접근 권한 없음: {frame.ImagePath}");
+                throw new Exception($"파일 접근 권한이 없습니다: {frame.ImagePath}");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ 이미지 삭제 실패: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Catalog/Record 파일에서 프레임 데이터 제거
+        /// </summary>
+        private bool DeleteRecordData(FrameData frame)
+        {
+            try
+            {
+                bool deleted = false;
+
+                // Catalog 파일들 찾기
+                string[] catalogFiles = Directory.GetFiles(currentFolder, "*catalog*", SearchOption.TopDirectoryOnly);
+                string[] recordFiles = Directory.GetFiles(currentFolder, "record_*.json", SearchOption.TopDirectoryOnly);
+                string[] jsonFiles = Directory.GetFiles(currentFolder, "*.json", SearchOption.TopDirectoryOnly);
+
+                var allFiles = catalogFiles.Concat(recordFiles).Concat(jsonFiles).Distinct().ToArray();
+
+                AddLog($"📁 찾은 파일: {allFiles.Length}개");
+                foreach (var file in allFiles)
+                {
+                    AddLog($"   - {Path.GetFileName(file)}");
+                }
+
+                if (allFiles.Length == 0)
+                {
+                    AddLog($"⚠ Catalog/Record 파일을 찾을 수 없음");
+                    return false;
+                }
+
+                foreach (string filePath in allFiles)
+                {
+                    try
+                    {
+                        if (Path.GetExtension(filePath).ToLower() == ".json")
+                        {
+                            // JSON 형식 파일 처리
+                            if (DeleteFromJsonFile(filePath, frame))
+                            {
+                                deleted = true;
+                            }
+                        }
+                        else
+                        {
+                            // 텍스트 형식 파일 처리
+                            if (DeleteFromTextFile(filePath, frame))
+                            {
+                                deleted = true;
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog($"⚠ {Path.GetFileName(filePath)} 처리 중 오류: {ex.Message}");
+                        continue;
+                    }
+                }
+
+                return deleted;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ 레코드 파일 처리 실패: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// JSON 파일에서 프레임 데이터 제거
+        /// </summary>
+        private bool DeleteFromJsonFile(string jsonPath, FrameData frame)
+        {
+            try
+            {
+                string content = File.ReadAllText(jsonPath);
+                string imageFileName = Path.GetFileName(frame.ImagePath);
+
+                AddLog($"📄 JSON 파일 검사: {Path.GetFileName(jsonPath)}");
+                AddLog($"   찾는 이미지: {imageFileName}");
+
+                // JSON 파일 내용에서 이미지 경로 찾기
+                if (!content.Contains(imageFileName))
+                {
+                    AddLog($"   ⓘ 해당 이미지를 찾을 수 없음");
+                    return false;
+                }
+
+                // 라인 단위로 필터링
+                var lines = File.ReadAllLines(jsonPath);
+                var originalLineCount = lines.Length;
+
+                // 이미지 파일명을 포함한 라인 제거
+                var filteredLines = lines.Where(line => !line.Contains(imageFileName)).ToArray();
+
+                if (originalLineCount != filteredLines.Length)
+                {
+                    // JSON 구조 보정 (쉼표 처리)
+                    filteredLines = FixJsonStructure(filteredLines);
+
+                    File.WriteAllLines(jsonPath, filteredLines, Encoding.UTF8);
+                    AddLog($"✓ JSON에서 {originalLineCount - filteredLines.Length}개 라인 제거");
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ JSON 파일 처리 오류: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// JSON 구조 보정 (쉼표 처리)
+        /// </summary>
+        private string[] FixJsonStructure(string[] lines)
+        {
+            if (lines.Length == 0) return lines;
+
+            var fixedLines = new List<string>();
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+
+                // 빈 라인 스킵
+                if (string.IsNullOrWhiteSpace(line))
+                    continue;
+
+                // 마지막 줄이거나 다음 줄이 쉼표로 시작하지 않으면 쉼표 제거
+                if (line.TrimEnd().EndsWith(","))
+                {
+                    if (i == lines.Length - 1 || (i + 1 < lines.Length && !lines[i + 1].TrimStart().StartsWith("}")))
+                    {
+                        line = line.TrimEnd().TrimEnd(',');
+                    }
+                }
+
+                fixedLines.Add(line);
+            }
+
+            return fixedLines.ToArray();
+        }
+
+        /// <summary>
+        /// 텍스트 형식 Catalog 파일에서 프레임 데이터 제거
+        /// </summary>
+        private bool DeleteFromTextFile(string catalogPath, FrameData frame)
+        {
+            try
+            {
+                string imageFileName = Path.GetFileName(frame.ImagePath);
+
+                AddLog($"📄 텍스트 파일 검사: {Path.GetFileName(catalogPath)}");
+                AddLog($"   찾는 이미지: {imageFileName}");
+
+                string[] lines = File.ReadAllLines(catalogPath);
+                var originalLineCount = lines.Length;
+
+                // 이미지 파일명을 포함한 라인 제거
+                string[] filteredLines = lines.Where(line => 
+                    !line.Contains(imageFileName) && 
+                    !line.Contains(frame.ImagePath)
+                ).ToArray();
+
+                if (originalLineCount != filteredLines.Length)
+                {
+                    File.WriteAllLines(catalogPath, filteredLines, Encoding.UTF8);
+                    AddLog($"✓ 텍스트에서 {originalLineCount - filteredLines.Length}개 라인 제거");
+                    return true;
+                }
+                else
+                {
+                    AddLog($"   ⓘ 해당 이미지를 찾을 수 없음");
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ 텍스트 파일 처리 오류: {ex.Message}");
+                return false;
             }
         }
 
