@@ -46,6 +46,7 @@
             this.btnpurse = new System.Windows.Forms.Button();
             this.btnnext = new System.Windows.Forms.Button();
             this.btntrace = new System.Windows.Forms.Button();
+            this.cbboxspeed = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.SuspendLayout();
@@ -249,12 +250,21 @@
             this.btntrace.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
             this.btntrace.UseVisualStyleBackColor = true;
             // 
+            // cbboxspeed
+            // 
+            this.cbboxspeed.FormattingEnabled = true;
+            this.cbboxspeed.Location = new System.Drawing.Point(795, 515);
+            this.cbboxspeed.Name = "cbboxspeed";
+            this.cbboxspeed.Size = new System.Drawing.Size(121, 23);
+            this.cbboxspeed.TabIndex = 18;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlLight;
             this.ClientSize = new System.Drawing.Size(1283, 732);
+            this.Controls.Add(this.cbboxspeed);
             this.Controls.Add(this.btntrace);
             this.Controls.Add(this.btnnext);
             this.Controls.Add(this.btnpurse);
@@ -303,6 +313,7 @@
         private System.Windows.Forms.Button btnpurse;
         private System.Windows.Forms.Button btnnext;
         private System.Windows.Forms.Button btntrace;
+        private System.Windows.Forms.ComboBox cbboxspeed;
     }
 }
 

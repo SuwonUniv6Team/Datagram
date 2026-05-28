@@ -17,6 +17,8 @@ namespace Datagram
         private List<FrameData> frames = new List<FrameData>();
         private string currentFolder = "";
         private Timer playbackTimer;
+        private float playbackSpeed = 1.0f;
+        private bool isUserInteracting = false;
 
         public Form1()
         {
@@ -34,13 +36,50 @@ namespace Datagram
             btnDelete.Click += BtnDelete_Click;
             btnTrain.Click += BtnTrain_Click;
 
-            // 다중 선택 지원
-            lstFrames.SelectionMode = SelectionMode.MultiExtended;
+            // 단일 선택 모드 (재생 중 프레임 이동을 위해 필수)
+            lstFrames.SelectionMode = SelectionMode.One;
 
             // Timer 초기화 (약 10 FPS 설정)
             playbackTimer = new Timer();
             playbackTimer.Interval = 100; // 100ms 마다 틱
             playbackTimer.Tick += PlaybackTimer_Tick;
+
+            // 배속 콤보박스 초기화
+            InitializeSpeedComboBox();
+        }
+
+        private void InitializeSpeedComboBox()
+        {
+            cbboxspeed.Items.Clear();
+            cbboxspeed.Items.Add("1x");
+            cbboxspeed.Items.Add("2x");
+            cbboxspeed.Items.Add("4x");
+            cbboxspeed.Items.Add("8x");
+            cbboxspeed.SelectedIndex = 0; // 기본값 1x
+            cbboxspeed.SelectedIndexChanged += CbboxSpeed_SelectedIndexChanged;
+        }
+
+        private void CbboxSpeed_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            switch (cbboxspeed.SelectedIndex)
+            {
+                case 0: // 1x
+                    playbackSpeed = 1.0f;
+                    break;
+                case 1: // 2x
+                    playbackSpeed = 2.0f;
+                    break;
+                case 2: // 4x
+                    playbackSpeed = 4.0f;
+                    break;
+                case 3: // 8x
+                    playbackSpeed = 8.0f;
+                    break;
+                default:
+                    playbackSpeed = 1.0f;
+                    break;
+            }
+            AddLog($"재생 속도 설정: {cbboxspeed.SelectedItem}");
         }
 
         private void BtnTrain_Click(object sender, EventArgs e)
@@ -83,8 +122,10 @@ namespace Datagram
             if (frames.Count > 0 && lstFrames.SelectedIndex < frames.Count - 1)
             {
                 int nextIdx = lstFrames.SelectedIndex < 0 ? 0 : lstFrames.SelectedIndex + 1;
-                lstFrames.ClearSelected();
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.SelectedIndex = nextIdx;
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+                ShowFrame(frames[nextIdx]);
                 AddLog($"프레임 이동: {nextIdx}번");
             }
         }
@@ -95,8 +136,10 @@ namespace Datagram
             if (frames.Count > 0 && lstFrames.SelectedIndex > 0)
             {
                 int prevIdx = lstFrames.SelectedIndex - 1;
-                lstFrames.ClearSelected();
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.SelectedIndex = prevIdx;
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+                ShowFrame(frames[prevIdx]);
                 AddLog($"프레임 이동: {prevIdx}번");
             }
         }
@@ -109,13 +152,24 @@ namespace Datagram
                 return;
             }
 
+            // 사용자가 상호작용 중이면 다음 틱 때까지 대기
+            if (isUserInteracting)
+            {
+                isUserInteracting = false;
+                return;
+            }
+
             int currentIdx = lstFrames.SelectedIndex;
             if (currentIdx < 0) currentIdx = 0;
 
-            if (currentIdx < frames.Count - 1)
+            int nextIdx = currentIdx + (int)playbackSpeed;
+
+            if (nextIdx < frames.Count)
             {
-                lstFrames.ClearSelected();
-                lstFrames.SelectedIndex = currentIdx + 1;
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+                lstFrames.SelectedIndex = nextIdx;
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+                ShowFrame(frames[nextIdx]);
             }
             else
             {
@@ -306,8 +360,11 @@ namespace Datagram
         {
             if (lstFrames.SelectedIndex >= 0 && lstFrames.SelectedIndex < frames.Count)
             {
+                isUserInteracting = true;
                 int idx = lstFrames.SelectedIndex;
+                trackFrame.ValueChanged -= TrackFrame_Scroll;
                 trackFrame.Value = idx;
+                trackFrame.ValueChanged += TrackFrame_Scroll;
                 ShowFrame(frames[idx]);
             }
         }
@@ -316,7 +373,11 @@ namespace Datagram
         {
             if (trackFrame.Value >= 0 && trackFrame.Value < frames.Count)
             {
+                isUserInteracting = true;
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.SelectedIndex = trackFrame.Value;
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+                ShowFrame(frames[trackFrame.Value]);
             }
         }
 
