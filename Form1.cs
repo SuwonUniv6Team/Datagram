@@ -19,12 +19,14 @@ namespace Datagram
         private Timer playbackTimer;
         private float playbackSpeed = 1.0f;
         private bool isUserInteracting = false;
+        private bool isPlaybackActive = false;  // 재생 중 플래그
 
         public Form1()
         {
             InitializeComponent();
             btnLoad.Click += BtnLoad_Click;
             lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+            lstFrames.MouseUp += LstFrames_MouseUp;  // 마우스 업 이벤트 추가 (다중선택용)
             trackFrame.Scroll += TrackFrame_Scroll;
 
             // 재생 제어 버튼 이벤트 등록
@@ -36,8 +38,8 @@ namespace Datagram
             btnDelete.Click += BtnDelete_Click;
             btnTrain.Click += BtnTrain_Click;
 
-            // 단일 선택 모드 (재생 중 프레임 이동을 위해 필수)
-            lstFrames.SelectionMode = SelectionMode.One;
+            // 다중 선택 모드 활성화 (Ctrl/Shift + 클릭으로 다중 선택 가능)
+            lstFrames.SelectionMode = SelectionMode.MultiExtended;
 
             // Timer 초기화 (약 10 FPS 설정)
             playbackTimer = new Timer();
@@ -102,45 +104,93 @@ namespace Datagram
             // 이미 마지막 프레임인 경우 처음부터 다시 재생
             if (lstFrames.SelectedIndex >= frames.Count - 1)
             {
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.ClearSelected();
                 lstFrames.SelectedIndex = 0;
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
             }
 
-            AddLog("자동재생 시작");
+            isPlaybackActive = true;
+            AddLog("▶ 자동재생 시작");
             playbackTimer.Start();
         }
 
         private void BtnPause_Click(object sender, EventArgs e)
         {
-            AddLog("자동재생 정지");
+            isPlaybackActive = false;
+            AddLog("⏸ 자동재생 정지");
             playbackTimer.Stop();
         }
 
         private void BtnNext_Click(object sender, EventArgs e)
         {
-            playbackTimer.Stop(); // 수동 이동시 재생 멈춤
-            if (frames.Count > 0 && lstFrames.SelectedIndex < frames.Count - 1)
+            playbackTimer.Stop();
+            isPlaybackActive = false;
+
+            if (frames.Count == 0) return;
+
+            int currentIdx = lstFrames.SelectedIndex;
+            if (currentIdx < 0) currentIdx = 0;
+
+            // 현재 프레임이 마지막이 아니면 다음으로 이동
+            if (currentIdx < frames.Count - 1)
             {
-                int nextIdx = lstFrames.SelectedIndex < 0 ? 0 : lstFrames.SelectedIndex + 1;
+                int nextIdx = currentIdx + 1;
+
+                // 이벤트 임시 제거
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+                lstFrames.ClearSelected();
                 lstFrames.SelectedIndex = nextIdx;
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+
+                // 트랙바 동기화
+                trackFrame.ValueChanged -= TrackFrame_Scroll;
+                trackFrame.Value = nextIdx;
+                trackFrame.ValueChanged += TrackFrame_Scroll;
+
+                // 이미지 표시
                 ShowFrame(frames[nextIdx]);
-                AddLog($"프레임 이동: {nextIdx}번");
+                AddLog($"▶ 다음 프레임: {nextIdx}번 이동");
+            }
+            else
+            {
+                AddLog($"ⓘ 마지막 프레임입니다");
             }
         }
 
         private void BtnTrace_Click(object sender, EventArgs e)
         {
-            playbackTimer.Stop(); // 수동 이동시 재생 멈춤
-            if (frames.Count > 0 && lstFrames.SelectedIndex > 0)
+            playbackTimer.Stop();
+            isPlaybackActive = false;
+
+            if (frames.Count == 0) return;
+
+            int currentIdx = lstFrames.SelectedIndex;
+            if (currentIdx < 0) currentIdx = frames.Count - 1;
+
+            // 현재 프레임이 첫 번째가 아니면 이전으로 이동
+            if (currentIdx > 0)
             {
-                int prevIdx = lstFrames.SelectedIndex - 1;
+                int prevIdx = currentIdx - 1;
+
+                // 이벤트 임시 제거
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+                lstFrames.ClearSelected();
                 lstFrames.SelectedIndex = prevIdx;
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+
+                // 트랙바 동기화
+                trackFrame.ValueChanged -= TrackFrame_Scroll;
+                trackFrame.Value = prevIdx;
+                trackFrame.ValueChanged += TrackFrame_Scroll;
+
+                // 이미지 표시
                 ShowFrame(frames[prevIdx]);
-                AddLog($"프레임 이동: {prevIdx}번");
+                AddLog($"◀ 이전 프레임: {prevIdx}번 이동");
+            }
+            else
+            {
+                AddLog($"ⓘ 첫 번째 프레임입니다");
             }
         }
 
@@ -149,6 +199,7 @@ namespace Datagram
             if (frames.Count == 0)
             {
                 playbackTimer.Stop();
+                isPlaybackActive = false;
                 return;
             }
 
@@ -159,21 +210,40 @@ namespace Datagram
                 return;
             }
 
-            int currentIdx = lstFrames.SelectedIndex;
-            if (currentIdx < 0) currentIdx = 0;
-
-            int nextIdx = currentIdx + (int)playbackSpeed;
-
-            if (nextIdx < frames.Count)
+            try
             {
-                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
-                lstFrames.SelectedIndex = nextIdx;
-                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
-                ShowFrame(frames[nextIdx]);
+                int currentIdx = lstFrames.SelectedIndex;
+                if (currentIdx < 0) currentIdx = 0;
+
+                int nextIdx = currentIdx + (int)playbackSpeed;
+
+                if (nextIdx < frames.Count)
+                {
+                    // 이벤트 핸들러 임시 제거
+                    lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+
+                    // 모든 선택 해제 후 현재 프레임만 선택
+                    lstFrames.ClearSelected();
+                    lstFrames.SelectedIndex = nextIdx;
+
+                    // 이벤트 핸들러 복구
+                    lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+
+                    // 이미지 표시
+                    ShowFrame(frames[nextIdx]);
+                }
+                else
+                {
+                    playbackTimer.Stop(); // 마지막 프레임에 도달하면 정지
+                    isPlaybackActive = false;
+                    AddLog("⏹ 재생 종료");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                playbackTimer.Stop(); // 마지막 프레임에 도달하면 정지
+                AddLog($"⚠ 재생 중 오류: {ex.Message}");
+                playbackTimer.Stop();
+                isPlaybackActive = false;
             }
         }
 
@@ -222,6 +292,38 @@ namespace Datagram
             MessageBox.Show($"필터링 전: {beforeCount}개\n필터링 후: {afterCount}개", "필터링 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        /// <summary>
+        /// 마우스 업 이벤트 (다중선택 완료 후)
+        /// 재생 중이 아닐 때만 마지막 선택된 프레임을 표시
+        /// </summary>
+        private void LstFrames_MouseUp(object sender, MouseEventArgs e)
+        {
+            // 재생 중이면 아무것도 하지 않음
+            if (isPlaybackActive)
+            {
+                AddLog("ⓘ 재생 중에는 다중선택이 비활성화됩니다.");
+                return;
+            }
+
+            // 다중 선택된 항목이 있으면 마지막 선택 항목을 표시
+            if (lstFrames.SelectedIndices.Count > 0)
+            {
+                int lastSelected = lstFrames.SelectedIndices[lstFrames.SelectedIndices.Count - 1];
+
+                // 트랙바 업데이트
+                trackFrame.ValueChanged -= TrackFrame_Scroll;
+                trackFrame.Value = lastSelected;
+                trackFrame.ValueChanged += TrackFrame_Scroll;
+
+                // 이미지 표시
+                if (lastSelected >= 0 && lastSelected < frames.Count)
+                {
+                    ShowFrame(frames[lastSelected]);
+                    AddLog($"✓ 다중선택: {lstFrames.SelectedIndices.Count}개 프레임 선택됨");
+                }
+            }
+        }
+
         private void BtnDelete_Click(object sender, EventArgs e)
         {
             if (lstFrames.SelectedIndices.Count == 0 || frames.Count == 0) return;
@@ -230,14 +332,29 @@ namespace Datagram
                 "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
-                // 0. 먼저 모든 이미지를 메모리에서 해제
-                AddLog("🔓 메모리에서 이미지 해제 중...");
-                if (picMain.Image != null)
+                // 0. 먼저 모든 이미지를 메모리에서 확실하게 해제
+                AddLog("🔓 메모리에서 모든 이미지 해제 중...");
+                try
                 {
-                    picMain.Image.Dispose();
-                    picMain.Image = null;
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
+                    if (picMain.Image != null)
+                    {
+                        picMain.Image.Dispose();
+                        picMain.Image = null;
+                    }
+
+                    // 가비지 컬렉션 3회 실행 (확실한 메모리 해제)
+                    for (int i = 0; i < 3; i++)
+                    {
+                        GC.Collect();
+                        GC.WaitForPendingFinalizers();
+                    }
+
+                    System.Threading.Thread.Sleep(200); // 200ms 대기
+                    AddLog("✓ 메모리 정리 완료");
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"⚠ 메모리 해제 중 오류: {ex.Message}");
                 }
 
                 // 인덱스가 꼬이지 않도록 내림차순 정렬 후 삭제
@@ -246,6 +363,7 @@ namespace Datagram
 
                 int imageDeletedCount = 0;
                 int recordDeletedCount = 0;
+                int imageDeletionFailedCount = 0;
 
                 // 선택된 프레임 데이터와 이미지 파일 삭제
                 foreach (int idx in selectedIndices)
@@ -256,6 +374,10 @@ namespace Datagram
                         if (DeleteImageFile(frames[idx]))
                         {
                             imageDeletedCount++;
+                        }
+                        else
+                        {
+                            imageDeletionFailedCount++;
                         }
 
                         // 2. Catalog/Record 파일에서 데이터 제거
@@ -274,10 +396,16 @@ namespace Datagram
 
                 // 삭제 결과 메시지
                 string deletedStr = string.Join(", ", selectedIndices);
-                AddLog($"━━━ 프레임 삭제 완료 ━━━");
+                AddLog($"━━━ 프레임 삭제 결과 ━━━");
                 AddLog($"  삭제 인덱스: {deletedStr}");
-                AddLog($"  이미지 파일: {imageDeletedCount}개 삭제");
-                AddLog($"  레코드 데이터: {recordDeletedCount}개 삭제");
+                AddLog($"  ✓ 이미지 삭제: {imageDeletedCount}개");
+                if (imageDeletionFailedCount > 0)
+                {
+                    AddLog($"  ✗ 이미지 삭제 실패: {imageDeletionFailedCount}개");
+                    AddLog($"  💡 팁: OneDrive 또는 클라우드 동기화 폴더를 사용 중이면 동기화가 완료될 때까지 대기하세요.");
+                }
+                AddLog($"  ✓ 레코드 데이터: {recordDeletedCount}개 삭제");
+                AddLog($"━━━━━━━━━━━━━━━━━━");
 
                 // 리스트 및 프레임 번호 갱신
                 lstFrames.Items.Clear();
@@ -322,7 +450,7 @@ namespace Datagram
         }
 
         /// <summary>
-        /// 이미지 파일 삭제 (PictureBox에서 이미지 해제 후 삭제)
+        /// 이미지 파일 삭제 (강화된 버전 - 여러 번 재시도 포함)
         /// </summary>
         private bool DeleteImageFile(FrameData frame)
         {
@@ -330,58 +458,82 @@ namespace Datagram
             try
             {
                 imgPath = Path.Combine(currentFolder, "images", frame.ImagePath);
-                if (File.Exists(imgPath))
-                {
-                    // 1. 현재 표시 중인 이미지를 메모리에서 해제
-                    AddLog($"🔓 PictureBox에서 이미지 해제 중...");
-                    if (picMain.Image != null)
-                    {
-                        picMain.Image.Dispose();
-                        picMain.Image = null;
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-                    }
 
-                    // 2. 파일 삭제 시도
-                    AddLog($"🗑️  파일 삭제 중: {frame.ImagePath}");
-                    File.Delete(imgPath);
-                    AddLog($"✓ 이미지 삭제: {frame.ImagePath}");
-                    return true;
-                }
-                else
+                if (!File.Exists(imgPath))
                 {
                     AddLog($"⚠ 이미지 파일을 찾을 수 없음: {frame.ImagePath}");
                     return false;
                 }
-            }
-            catch (IOException ioEx)
-            {
-                // 파일이 다른 프로세스에서 사용 중인 경우
-                AddLog($"⚠ 파일 잠금 상태 - 잠시 후 재시도 중...");
-                System.Threading.Thread.Sleep(500); // 0.5초 대기
 
-                try
+                AddLog($"🗑️  파일 삭제 시도: {frame.ImagePath}");
+
+                // 메모리에서 이미지 해제 (모든 이미지, 캐시 포함)
+                AddLog($"🔓 메모리에서 이미지 해제 중...");
+                if (picMain.Image != null)
                 {
-                    // 재시도
-                    File.Delete(imgPath);
-                    AddLog($"✓ 이미지 삭제 (재시도 성공): {frame.ImagePath}");
-                    return true;
+                    try
+                    {
+                        picMain.Image.Dispose();
+                        picMain.Image = null;
+                    }
+                    catch { }
                 }
-                catch (Exception retryEx)
+
+                // 가비지 컬렉션 강제 실행
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                System.Threading.Thread.Sleep(100);  // 100ms 대기
+
+                // 파일 삭제 시도 (최대 5회)
+                int maxRetries = 5;
+                int retryCount = 0;
+                bool deleted = false;
+
+                while (!deleted && retryCount < maxRetries)
                 {
-                    AddLog($"✗ 파일 잠금 해제 실패: {retryEx.Message}");
-                    throw new Exception($"파일이 사용 중입니다. 다시 시도해주세요: {frame.ImagePath}");
+                    try
+                    {
+                        File.Delete(imgPath);
+                        deleted = true;
+                        AddLog($"✓ 이미지 삭제 성공: {frame.ImagePath}");
+                        return true;
+                    }
+                    catch (IOException ioEx)
+                    {
+                        retryCount++;
+                        if (retryCount < maxRetries)
+                        {
+                            AddLog($"⚠ 재시도 {retryCount}/{maxRetries-1} - {ioEx.Message}");
+                            System.Threading.Thread.Sleep(300 * retryCount);  // 점진적 대기 (300ms, 600ms, 900ms...)
+                        }
+                        else
+                        {
+                            throw;
+                        }
+                    }
                 }
+
+                return false;
             }
             catch (UnauthorizedAccessException)
             {
                 AddLog($"✗ 파일 접근 권한 없음: {frame.ImagePath}");
-                throw new Exception($"파일 접근 권한이 없습니다: {frame.ImagePath}");
+                AddLog($"   경로: {imgPath}");
+                return false;
+            }
+            catch (IOException ioEx)
+            {
+                AddLog($"✗ 파일 잠금 해제 불가: {ioEx.Message}");
+                AddLog($"   경로: {imgPath}");
+                AddLog($"   파일을 다른 프로그램에서 사용 중일 수 있습니다.");
+                return false;
             }
             catch (Exception ex)
             {
                 AddLog($"✗ 이미지 삭제 실패: {ex.Message}");
-                throw;
+                AddLog($"   경로: {imgPath}");
+                return false;
             }
         }
 
@@ -585,6 +737,7 @@ namespace Datagram
         {
             frames.Clear();
             lstFrames.Items.Clear();
+            AddLog("━━━ 카탈로그 로드 시작 ━━━");
 
             // catalog 파일 또는 json 파일 찾기
             var files = Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly)
@@ -597,30 +750,61 @@ namespace Datagram
             if (files.Length == 0)
             {
                 MessageBox.Show("선택한 폴더에서 catalog 파일을 찾을 수 없습니다.");
+                AddLog("✗ Catalog 파일 없음");
                 return;
             }
 
+            AddLog($"📁 찾은 파일: {files.Length}개");
             foreach (var file in files)
             {
-                string[] lines = File.ReadAllLines(file);
-                foreach (string line in lines)
+                AddLog($"   - {Path.GetFileName(file)}");
+            }
+
+            int totalLinesProcessed = 0;
+            int framesLoaded = 0;
+
+            foreach (var file in files)
+            {
+                try
                 {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
+                    string[] lines = File.ReadAllLines(file);
+                    AddLog($"\n📄 {Path.GetFileName(file)}: {lines.Length}개 라인");
 
-                    var imgMatch = Regex.Match(line, @"""cam/image_array""\s*:\s*""([^""]+)""");
-                    if (!imgMatch.Success) continue;
+                    foreach (string line in lines)
+                    {
+                        if (string.IsNullOrWhiteSpace(line)) continue;
 
-                    var angleMatch = Regex.Match(line, @"""user/angle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
-                    var throttleMatch = Regex.Match(line, @"""user/throttle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                        totalLinesProcessed++;
 
-                    FrameData fd = new FrameData();
-                    fd.ImagePath = imgMatch.Groups[1].Value;
-                    if (angleMatch.Success) fd.Angle = double.Parse(angleMatch.Groups[1].Value);
-                    if (throttleMatch.Success) fd.Throttle = double.Parse(throttleMatch.Groups[1].Value);
+                        // 여러 패턴 시도
+                        var imgMatch = Regex.Match(line, @"""cam/image_array""\s*:\s*""([^""]+)""");
+                        if (!imgMatch.Success)
+                        {
+                            // 다른 패턴 시도
+                            imgMatch = Regex.Match(line, @"""image""\s*:\s*""([^""]+)""");
+                        }
 
-                    frames.Add(fd);
+                        if (!imgMatch.Success) continue;
+
+                        var angleMatch = Regex.Match(line, @"""user/angle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                        var throttleMatch = Regex.Match(line, @"""user/throttle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+
+                        FrameData fd = new FrameData();
+                        fd.ImagePath = imgMatch.Groups[1].Value;
+                        if (angleMatch.Success) fd.Angle = double.Parse(angleMatch.Groups[1].Value);
+                        if (throttleMatch.Success) fd.Throttle = double.Parse(throttleMatch.Groups[1].Value);
+
+                        frames.Add(fd);
+                        framesLoaded++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"⚠ 파일 로드 오류 ({Path.GetFileName(file)}): {ex.Message}");
                 }
             }
+
+            AddLog($"\n✓ 로드 완료: {framesLoaded}개 프레임 (총 {totalLinesProcessed}줄 처리)");
 
             if (frames.Count > 0)
             {
@@ -634,13 +818,55 @@ namespace Datagram
                     lstFrames.Items.Add(frames[i]);
                 }
 
-                AddLog($"데이터 로드 완료: {frames.Count}개");
+                // 실제 이미지 파일 검증
+                int missingImages = 0;
+                int imagesFolder = 0;
+
+                try
+                {
+                    string imagesPath = Path.Combine(folderPath, "images");
+                    if (Directory.Exists(imagesPath))
+                    {
+                        imagesFolder = Directory.GetFiles(imagesPath, "*.jpg").Length;
+                    }
+
+                    // 누락된 이미지 확인
+                    foreach (var frame in frames)
+                    {
+                        string imgPath = Path.Combine(folderPath, "images", frame.ImagePath);
+                        if (!File.Exists(imgPath))
+                        {
+                            missingImages++;
+                            if (missingImages <= 5)  // 처음 5개만 로그
+                            {
+                                AddLog($"⚠ 이미지 파일 없음: {frame.ImagePath}");
+                            }
+                        }
+                    }
+
+                    if (missingImages > 0)
+                    {
+                        AddLog($"⚠ 누락된 이미지: {missingImages}/{frames.Count}개");
+                    }
+
+                    AddLog($"📸 실제 이미지 파일: {imagesFolder}개");
+                    AddLog($"📋 로드된 프레임: {frames.Count}개");
+                    AddLog($"━━━━━━━━━━━━━━━━━");
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"⚠ 이미지 검증 오류: {ex.Message}");
+                }
+
                 // 첫 이미지 자동 출력
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.SelectedIndex = 0;
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
             }
             else
             {
                 MessageBox.Show("지원되는 데이터가 없습니다.");
+                AddLog("✗ 로드된 프레임 없음");
             }
         }
 
@@ -650,9 +876,13 @@ namespace Datagram
             {
                 isUserInteracting = true;
                 int idx = lstFrames.SelectedIndex;
+
+                // 트랙바만 동기화 (다중 선택 시 마지막 선택만 표시)
                 trackFrame.ValueChanged -= TrackFrame_Scroll;
                 trackFrame.Value = idx;
                 trackFrame.ValueChanged += TrackFrame_Scroll;
+
+                // 이미지 표시
                 ShowFrame(frames[idx]);
             }
         }
@@ -662,9 +892,18 @@ namespace Datagram
             if (trackFrame.Value >= 0 && trackFrame.Value < frames.Count)
             {
                 isUserInteracting = true;
+
+                // 리스트박스 이벤트 임시 제거
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+
+                // 선택 해제 후 새로운 인덱스 선택
+                lstFrames.ClearSelected();
                 lstFrames.SelectedIndex = trackFrame.Value;
+
+                // 이벤트 핸들러 복구
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+
+                // 이미지 표시
                 ShowFrame(frames[trackFrame.Value]);
             }
         }
