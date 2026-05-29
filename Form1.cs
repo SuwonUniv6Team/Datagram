@@ -354,8 +354,12 @@ namespace Datagram
 
                 if (cbox3.Checked && cbboxtub.SelectedItem != null)
                 {
-                    // 데이터 클래스명 (// 변수명 입력 필요) - TubName 필터링 요구 조건 (현재 Data 모델에 맞게 수정 필요)
-                    // query = query.Where(f => f.TubName == cbboxtub.SelectedItem.ToString());
+                    string selectedCatalog = cbboxtub.SelectedItem.ToString();
+                    // "[ 전체 주행 데이터 보기 ]"가 아닌 경우만 필터링 적용
+                    if (!selectedCatalog.Contains("전체"))
+                    {
+                        query = query.Where(f => f.CatalogName == selectedCatalog);
+                    }
                 }
 
                 // 필터링된 내용을 리스트로 변환 (// 변수명 입력 필요)
@@ -926,6 +930,57 @@ namespace Datagram
             lstFrames.Items.Clear();
             AddLog("━━━ 카탈로그 로드 시작 ━━━");
 
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // [주행 회차 콤보박스 동적 매핑]
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            try
+            {
+                // 1. 기존 콤보박스 항목 모두 제거 (중복 방지)
+                cbboxtub.Items.Clear();
+
+                // 2. 기본값 추가: "[ 전체 주행 데이터 보기 ]"
+                cbboxtub.Items.Add("[ 전체 주행 데이터 보기 ]");
+
+                // 3. .catalog 파일 탐색 및 콤보박스 채우기
+                // 선택된 데이터 폴더 경로 지정 및 .catalog 파일 탐색 필요
+                string[] catalogFiles = Directory.GetFiles(folderPath, "*.catalog");
+
+                // 4. 파일명(확장자 제외)만 추출해서 콤보박스에 추가
+                foreach (string catalogFile in catalogFiles)
+                {
+                    // 파일명만 추출 (예: "C:\path\catalog_0.catalog" → "catalog_0.catalog")
+                    string fileName = Path.GetFileName(catalogFile);
+
+                    // 확장자 제거 (예: "catalog_0.catalog" → "catalog_0")
+                    string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+
+                    // 콤보박스에 추가
+                    cbboxtub.Items.Add(fileNameWithoutExtension);
+                }
+
+                // 5. 기본값 선택 (0번 인덱스 = "[ 전체 주행 데이터 보기 ]")
+                cbboxtub.SelectedIndex = 0;
+
+                // 로그 출력
+                AddLog($"✓ 주행 회차 목록 로드: {catalogFiles.Length}개의 데이터 파일 발견");
+                if (catalogFiles.Length > 0)
+                {
+                    foreach (string file in catalogFiles)
+                    {
+                        AddLog($"   ├─ {Path.GetFileNameWithoutExtension(file)}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AddLog($"⚠ 주행 회차 콤보박스 로드 중 오류: {ex.Message}");
+                // 에러 발생 시에도 기본값만 유지
+                cbboxtub.Items.Clear();
+                cbboxtub.Items.Add("[ 전체 주행 데이터 보기 ]");
+                cbboxtub.SelectedIndex = 0;
+            }
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
             // catalog 파일 또는 json 파일 찾기
             var files = Directory.GetFiles(folderPath, "*.*", SearchOption.TopDirectoryOnly)
                 .Where(f => 
@@ -957,33 +1012,63 @@ namespace Datagram
                     string[] lines = File.ReadAllLines(file);
                     AddLog($"\n📄 {Path.GetFileName(file)}: {lines.Length}개 라인");
 
+                    // 현재 파일의 카탈로그 이름 추출 (확장자 제거)
+                    string currentCatalogName = Path.GetFileNameWithoutExtension(file);
+
+                    int matchedInFile = 0;
                     foreach (string line in lines)
                     {
                         if (string.IsNullOrWhiteSpace(line)) continue;
 
                         totalLinesProcessed++;
 
-                        // 여러 패턴 시도
+                        // 패턴 1: "cam/image_array"
                         var imgMatch = Regex.Match(line, @"""cam/image_array""\s*:\s*""([^""]+)""");
+
+                        // 패턴 2: "image" (따옴표 포함)
                         if (!imgMatch.Success)
                         {
-                            // 다른 패턴 시도
                             imgMatch = Regex.Match(line, @"""image""\s*:\s*""([^""]+)""");
+                        }
+
+                        // 패턴 3: image_array (따옴표 제거)
+                        if (!imgMatch.Success)
+                        {
+                            imgMatch = Regex.Match(line, @"image_array\s*:\s*""([^""]+)""");
+                        }
+
+                        // 패턴 4: 단순 이미지 경로 (test_ 포함)
+                        if (!imgMatch.Success)
+                        {
+                            imgMatch = Regex.Match(line, @"(test_[^""]*\.jpg)");
                         }
 
                         if (!imgMatch.Success) continue;
 
                         var angleMatch = Regex.Match(line, @"""user/angle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                        if (!angleMatch.Success)
+                        {
+                            angleMatch = Regex.Match(line, @"user/angle["":]?\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                        }
+
                         var throttleMatch = Regex.Match(line, @"""user/throttle""\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                        if (!throttleMatch.Success)
+                        {
+                            throttleMatch = Regex.Match(line, @"user/throttle["":]?\s*:\s*([-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?)");
+                        }
 
                         FrameData fd = new FrameData();
                         fd.ImagePath = imgMatch.Groups[1].Value;
+                        fd.CatalogName = currentCatalogName;  // 카탈로그 이름 설정
                         if (angleMatch.Success) fd.Angle = double.Parse(angleMatch.Groups[1].Value);
                         if (throttleMatch.Success) fd.Throttle = double.Parse(throttleMatch.Groups[1].Value);
 
                         frames.Add(fd);
                         framesLoaded++;
+                        matchedInFile++;
                     }
+
+                    AddLog($"   └─ 매칭된 프레임: {matchedInFile}개");
                 }
                 catch (Exception ex)
                 {
@@ -1158,6 +1243,7 @@ namespace Datagram
         public string ImagePath { get; set; }
         public double Angle { get; set; }
         public double Throttle { get; set; }
+        public string CatalogName { get; set; }  // 카탈로그 이름 (예: catalog_0)
 
         public override string ToString()
         {

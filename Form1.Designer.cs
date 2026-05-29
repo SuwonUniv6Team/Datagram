@@ -48,15 +48,15 @@
             this.btntrace = new System.Windows.Forms.Button();
             this.cbboxspeed = new System.Windows.Forms.ComboBox();
             this.gbfilter = new System.Windows.Forms.GroupBox();
+            this.cbboxtub = new System.Windows.Forms.ComboBox();
+            this.cbox1 = new System.Windows.Forms.CheckBox();
+            this.cbox3 = new System.Windows.Forms.CheckBox();
+            this.lbl1 = new System.Windows.Forms.Label();
+            this.nud1 = new System.Windows.Forms.NumericUpDown();
+            this.lbl2 = new System.Windows.Forms.Label();
+            this.cbox2 = new System.Windows.Forms.CheckBox();
             this.btnreset = new System.Windows.Forms.Button();
             this.cbox4 = new System.Windows.Forms.CheckBox();
-            this.lbl2 = new System.Windows.Forms.Label();
-            this.nud1 = new System.Windows.Forms.NumericUpDown();
-            this.lbl1 = new System.Windows.Forms.Label();
-            this.cbox3 = new System.Windows.Forms.CheckBox();
-            this.cbox2 = new System.Windows.Forms.CheckBox();
-            this.cbox1 = new System.Windows.Forms.CheckBox();
-            this.cbboxtub = new System.Windows.Forms.ComboBox();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.gbfilter.SuspendLayout();
@@ -325,6 +325,7 @@
             // 
             // gbfilter
             // 
+            this.gbfilter.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.gbfilter.Controls.Add(this.cbboxtub);
             this.gbfilter.Controls.Add(this.cbox1);
             this.gbfilter.Controls.Add(this.cbox3);
@@ -343,6 +344,92 @@
             this.gbfilter.TabIndex = 19;
             this.gbfilter.TabStop = false;
             this.gbfilter.Text = "데이터 필터링";
+            // 
+            // cbboxtub
+            // 
+            this.cbboxtub.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
+            this.cbboxtub.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cbboxtub.ForeColor = System.Drawing.Color.White;
+            this.cbboxtub.FormattingEnabled = true;
+            this.cbboxtub.Location = new System.Drawing.Point(175, 84);
+            this.cbboxtub.Name = "cbboxtub";
+            this.cbboxtub.Size = new System.Drawing.Size(121, 25);
+            this.cbboxtub.TabIndex = 16;
+            // 
+            // cbox1
+            // 
+            this.cbox1.AutoSize = true;
+            this.cbox1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cbox1.ForeColor = System.Drawing.Color.White;
+            this.cbox1.Location = new System.Drawing.Point(6, 34);
+            this.cbox1.Name = "cbox1";
+            this.cbox1.Size = new System.Drawing.Size(126, 21);
+            this.cbox1.TabIndex = 12;
+            this.cbox1.Text = "직진 데이터 제외";
+            this.cbox1.UseVisualStyleBackColor = true;
+            // 
+            // cbox3
+            // 
+            this.cbox3.AutoSize = true;
+            this.cbox3.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cbox3.ForeColor = System.Drawing.Color.White;
+            this.cbox3.Location = new System.Drawing.Point(6, 84);
+            this.cbox3.Name = "cbox3";
+            this.cbox3.Size = new System.Drawing.Size(173, 21);
+            this.cbox3.TabIndex = 15;
+            this.cbox3.Text = "특정 주행 회차(Tub) 선택";
+            this.cbox3.UseVisualStyleBackColor = true;
+            this.cbox3.CheckedChanged += new System.EventHandler(this.checkBox4_CheckedChanged);
+            // 
+            // lbl1
+            // 
+            this.lbl1.AutoSize = true;
+            this.lbl1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbl1.ForeColor = System.Drawing.Color.White;
+            this.lbl1.Location = new System.Drawing.Point(136, 55);
+            this.lbl1.Name = "lbl1";
+            this.lbl1.Size = new System.Drawing.Size(68, 17);
+            this.lbl1.TabIndex = 0;
+            this.lbl1.Text = "( |Angle| ≥";
+            // 
+            // nud1
+            // 
+            this.nud1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
+            this.nud1.DecimalPlaces = 1;
+            this.nud1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.nud1.ForeColor = System.Drawing.Color.White;
+            this.nud1.Location = new System.Drawing.Point(204, 55);
+            this.nud1.Name = "nud1";
+            this.nud1.Size = new System.Drawing.Size(43, 25);
+            this.nud1.TabIndex = 1;
+            this.nud1.Value = new decimal(new int[] {
+            6,
+            0,
+            0,
+            65536});
+            // 
+            // lbl2
+            // 
+            this.lbl2.AutoSize = true;
+            this.lbl2.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbl2.ForeColor = System.Drawing.Color.White;
+            this.lbl2.Location = new System.Drawing.Point(250, 55);
+            this.lbl2.Name = "lbl2";
+            this.lbl2.Size = new System.Drawing.Size(12, 17);
+            this.lbl2.TabIndex = 2;
+            this.lbl2.Text = ")";
+            // 
+            // cbox2
+            // 
+            this.cbox2.AutoSize = true;
+            this.cbox2.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cbox2.ForeColor = System.Drawing.Color.White;
+            this.cbox2.Location = new System.Drawing.Point(6, 57);
+            this.cbox2.Name = "cbox2";
+            this.cbox2.Size = new System.Drawing.Size(139, 21);
+            this.cbox2.TabIndex = 14;
+            this.cbox2.Text = "급커브 구간만 보기";
+            this.cbox2.UseVisualStyleBackColor = true;
             // 
             // btnreset
             // 
@@ -371,86 +458,6 @@
             this.cbox4.TabIndex = 13;
             this.cbox4.Text = "정지 및 후진 제외";
             this.cbox4.UseVisualStyleBackColor = true;
-            // 
-            // lbl2
-            // 
-            this.lbl2.AutoSize = true;
-            this.lbl2.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lbl2.ForeColor = System.Drawing.Color.White;
-            this.lbl2.Location = new System.Drawing.Point(250, 55);
-            this.lbl2.Name = "lbl2";
-            this.lbl2.Size = new System.Drawing.Size(12, 17);
-            this.lbl2.TabIndex = 2;
-            this.lbl2.Text = ")";
-            // 
-            // nud1
-            // 
-            this.nud1.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.nud1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.nud1.ForeColor = System.Drawing.Color.White;
-            this.nud1.Location = new System.Drawing.Point(204, 55);
-            this.nud1.Name = "nud1";
-            this.nud1.Size = new System.Drawing.Size(43, 25);
-            this.nud1.TabIndex = 1;
-            // 
-            // lbl1
-            // 
-            this.lbl1.AutoSize = true;
-            this.lbl1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lbl1.ForeColor = System.Drawing.Color.White;
-            this.lbl1.Location = new System.Drawing.Point(136, 55);
-            this.lbl1.Name = "lbl1";
-            this.lbl1.Size = new System.Drawing.Size(68, 17);
-            this.lbl1.TabIndex = 0;
-            this.lbl1.Text = "( |Angle| ≥";
-            // 
-            // cbox3
-            // 
-            this.cbox3.AutoSize = true;
-            this.cbox3.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cbox3.ForeColor = System.Drawing.Color.White;
-            this.cbox3.Location = new System.Drawing.Point(6, 84);
-            this.cbox3.Name = "cbox3";
-            this.cbox3.Size = new System.Drawing.Size(173, 21);
-            this.cbox3.TabIndex = 15;
-            this.cbox3.Text = "특정 주행 회차(Tub) 선택";
-            this.cbox3.UseVisualStyleBackColor = true;
-            this.cbox3.CheckedChanged += new System.EventHandler(this.checkBox4_CheckedChanged);
-            // 
-            // cbox2
-            // 
-            this.cbox2.AutoSize = true;
-            this.cbox2.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cbox2.ForeColor = System.Drawing.Color.White;
-            this.cbox2.Location = new System.Drawing.Point(6, 57);
-            this.cbox2.Name = "cbox2";
-            this.cbox2.Size = new System.Drawing.Size(139, 21);
-            this.cbox2.TabIndex = 14;
-            this.cbox2.Text = "급커브 구간만 보기";
-            this.cbox2.UseVisualStyleBackColor = true;
-            // 
-            // cbox1
-            // 
-            this.cbox1.AutoSize = true;
-            this.cbox1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cbox1.ForeColor = System.Drawing.Color.White;
-            this.cbox1.Location = new System.Drawing.Point(6, 34);
-            this.cbox1.Name = "cbox1";
-            this.cbox1.Size = new System.Drawing.Size(126, 21);
-            this.cbox1.TabIndex = 12;
-            this.cbox1.Text = "직진 데이터 제외";
-            this.cbox1.UseVisualStyleBackColor = true;
-            // 
-            // cbboxtub
-            // 
-            this.cbboxtub.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.cbboxtub.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.cbboxtub.ForeColor = System.Drawing.Color.White;
-            this.cbboxtub.FormattingEnabled = true;
-            this.cbboxtub.Location = new System.Drawing.Point(175, 84);
-            this.cbboxtub.Name = "cbboxtub";
-            this.cbboxtub.Size = new System.Drawing.Size(121, 25);
-            this.cbboxtub.TabIndex = 16;
             // 
             // Form1
             // 
