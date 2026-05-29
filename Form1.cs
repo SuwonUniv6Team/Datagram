@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -84,9 +85,79 @@ namespace Datagram
             AddLog($"재생 속도 설정: {cbboxspeed.SelectedItem}");
         }
 
-        private void BtnTrain_Click(object sender, EventArgs e)
+        private async void BtnTrain_Click(object sender, EventArgs e)
         {
-            AddLog("AI 학습 시작");
+            string imageFolder = txtPath.Text.Trim();
+
+            if (!Directory.Exists(imageFolder))
+            {
+                MessageBox.Show("폴더가 존재하지 않습니다.");
+                return;
+            }
+
+            // 버튼 비활성화 (중복 클릭 방지)
+            btnTrain.Enabled = false;
+            AddLog("환경 확인 중...");
+
+            // 백그라운드에서 설치 확인 및 설치 진행
+            bool ready = await Task.Run(() =>
+            {
+                var starter = new TrainStarter(txtLog);
+                return starter.EnsureReady();
+            });
+
+            if (!ready)
+            {
+                AddLog("❌ 환경 준비 실패. 학습을 시작할 수 없습니다.");
+                btnTrain.Enabled = true;
+                return;
+            }
+
+            // 설치 완료 후 학습 시작
+            string scriptPath = GetScriptPath("train.py");
+            if (scriptPath == null)
+            {
+                MessageBox.Show("train.py 파일을 찾을 수 없습니다.");
+                btnTrain.Enabled = true;
+                return;
+            }
+
+            ProcessStartInfo psi = new ProcessStartInfo
+            {
+                FileName = "python",
+                Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true,
+                WorkingDirectory = Path.GetDirectoryName(scriptPath)
+            };
+
+            Process process = new Process();
+            process.StartInfo = psi;
+            process.EnableRaisingEvents = true;
+
+            process.OutputDataReceived += (s, args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                    Invoke(new Action(() => txtLog.AppendText(args.Data + Environment.NewLine)));
+            };
+
+            process.ErrorDataReceived += (s, args) =>
+            {
+                if (!string.IsNullOrEmpty(args.Data))
+                    Invoke(new Action(() => txtLog.AppendText("[ERROR] " + args.Data + Environment.NewLine)));
+            };
+
+            process.Exited += (s, args) =>
+            {
+                Invoke(new Action(() => btnTrain.Enabled = true));
+            };
+
+            process.Start();
+            AddLog($"AI 학습 시작: {scriptPath}");
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
         }
 
         private void AddLog(string message)
@@ -941,6 +1012,19 @@ namespace Datagram
             {
                 txtLog.AppendText("이미지 불러오기 실패: " + ex.Message + "\n");
             }
+        }
+
+        private string GetScriptPath(string scriptName)
+        {
+            string exeDir = Path.GetDirectoryName(Application.ExecutablePath);
+            string scriptInBinDir = Path.Combine(exeDir, scriptName);
+            if (File.Exists(scriptInBinDir)) return scriptInBinDir;
+
+            string projectRoot = Path.GetDirectoryName(Path.GetDirectoryName(exeDir));
+            string scriptInRoot = Path.Combine(projectRoot, scriptName);
+            if (File.Exists(scriptInRoot)) return scriptInRoot;
+
+            return null;
         }
     }
 
