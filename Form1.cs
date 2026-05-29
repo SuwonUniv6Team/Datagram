@@ -16,6 +16,7 @@ namespace Datagram
     public partial class Form1 : Form
     {
         private List<FrameData> frames = new List<FrameData>();
+        private List<FrameData> originalFrames = new List<FrameData>();  // 원본 데이터 보관용
         private string currentFolder = "";
         private Timer playbackTimer;
         private float playbackSpeed = 1.0f;
@@ -49,6 +50,13 @@ namespace Datagram
 
             // 배속 콤보박스 초기화
             InitializeSpeedComboBox();
+
+            // 필터 초기화 버튼 이벤트 등록
+            btnreset.Click += BtnResetFilter_Click;
+
+            // nud1 (급커브 수치) 초기화 - 소수점 0.1씩 증가/감소
+            nud1.Increment = (decimal)0.1;
+            nud1.DecimalPlaces = 1;
         }
 
         private void InitializeSpeedComboBox()
@@ -320,47 +328,152 @@ namespace Datagram
 
         private void BtnFilter_Click(object sender, EventArgs e)
         {
-            if (frames == null || frames.Count == 0) return;
-
-            int beforeCount = frames.Count;
-
-            // Throttle <= 0.05 인 프레임 제거
-            frames = frames.Where(f => f.Throttle > 0.05).ToList();
-
-            int afterCount = frames.Count;
-
-            // 리스트 및 프레임 번호 갱신
-            lstFrames.Items.Clear();
-            for (int i = 0; i < frames.Count; i++)
+            try
             {
-                frames[i].FrameIndex = i;
-                lstFrames.Items.Add(frames[i]);
-            }
+                if (frames == null || frames.Count == 0) return;
 
-            // 트랙바 및 화면 갱신
-            if (frames.Count > 0)
-            {
-                trackFrame.Maximum = frames.Count - 1;
-                trackFrame.Value = 0;
-                lstFrames.SelectedIndex = 0;
-            }
-            else
-            {
-                trackFrame.Maximum = 0;
-                trackFrame.Value = 0;
-                if (picMain.Image != null)
+                // 전체 데이터 리스트 (// 변수명 입력 필요)
+                // IEnumerable<DonkeyFrame> query = 전체데이터리스트.AsEnumerable();
+                var query = frames.AsEnumerable();
+
+                if (cbox1.Checked)
                 {
-                    picMain.Image.Dispose();
-                    picMain.Image = null;
+                    query = query.Where(f => Math.Abs(f.Angle) > 0.05);
                 }
-                lblAngleName.Text = "Angle: ";
-                lblThrottleName.Text = "Throttle: ";
-                prgAngle.Value = 0;
-                prgThrottle.Value = 0;
-            }
 
-            AddLog($"데이터 필터링 완료: {beforeCount}개 -> {afterCount}개");
-            MessageBox.Show($"필터링 전: {beforeCount}개\n필터링 후: {afterCount}개", "필터링 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                if (cbox4.Checked)
+                {
+                    query = query.Where(f => f.Throttle > 0);
+                }
+
+                if (cbox2.Checked)
+                {
+                    double curveValue = (double)nud1.Value;
+                    query = query.Where(f => Math.Abs(f.Angle) >= curveValue);
+                }
+
+                if (cbox3.Checked && cbboxtub.SelectedItem != null)
+                {
+                    // 데이터 클래스명 (// 변수명 입력 필요) - TubName 필터링 요구 조건 (현재 Data 모델에 맞게 수정 필요)
+                    // query = query.Where(f => f.TubName == cbboxtub.SelectedItem.ToString());
+                }
+
+                // 필터링된 내용을 리스트로 변환 (// 변수명 입력 필요)
+                // List<DonkeyFrame> filteredList = query.ToList();
+                var filteredList = query.ToList();
+
+                // UI 갱신 메서드 (// 변수명 입력 필요)
+                // BindDataToUI(filteredList);
+
+                // --- 아래는 현재 코드베이스와 호환을 위한 기존 UI 갱신 인라인 로직 ---
+                frames = filteredList;
+                lstFrames.Items.Clear();
+                for (int i = 0; i < frames.Count; i++)
+                {
+                    frames[i].FrameIndex = i;
+                    lstFrames.Items.Add(frames[i]);
+                }
+
+                if (frames.Count > 0)
+                {
+                    trackFrame.Maximum = frames.Count - 1;
+                    trackFrame.Value = 0;
+                    lstFrames.SelectedIndex = 0;
+                }
+                else
+                {
+                    trackFrame.Maximum = 0;
+                    trackFrame.Value = 0;
+                    if (picMain.Image != null)
+                    {
+                        picMain.Image.Dispose();
+                        picMain.Image = null;
+                    }
+                    lblAngleName.Text = "Angle: ";
+                    lblThrottleName.Text = "Throttle: ";
+                    prgAngle.Value = 0;
+                    prgThrottle.Value = 0;
+                }
+
+                // 최하단 로그창 텍스트박스(txtLog)에 실시간 처리 결과 반영
+                string time = DateTime.Now.ToString("HH:mm:ss");
+                txtLog.AppendText($"[{time}] 필터 적용 완료: {filteredList.Count}개의 프레임이 선택되었습니다." + Environment.NewLine);
+                txtLog.SelectionStart = txtLog.Text.Length;
+                txtLog.ScrollToCaret();
+            }
+            catch (Exception ex)
+            {
+                // 데이터 처리 중 에러 발생 시 로그 반영
+                string errorTime = DateTime.Now.ToString("HH:mm:ss");
+                txtLog.AppendText($"[{errorTime}] ❌ 필터 적용 에러 발생: {ex.Message}" + Environment.NewLine);
+                txtLog.SelectionStart = txtLog.Text.Length;
+                txtLog.ScrollToCaret();
+            }
+        }
+
+        private void BtnResetFilter_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // 1. 모든 체크박스를 Checked = false로 변경
+                cbox1.Checked = false;
+                cbox2.Checked = false;
+                cbox3.Checked = false;
+                cbox4.Checked = false;
+
+                // 2. nud1의 Value를 기본값 0.6으로 변경
+                nud1.Value = (decimal)0.6;
+
+                // 3. cbboxtub의 SelectedIndex를 0으로 설정 (첫 번째 항목 선택)
+                if (cbboxtub.Items.Count > 0)
+                {
+                    cbboxtub.SelectedIndex = 0;
+                }
+
+                // 4. 원본 데이터로 UI 갱신
+                frames = new List<FrameData>(originalFrames);
+                lstFrames.Items.Clear();
+                for (int i = 0; i < frames.Count; i++)
+                {
+                    frames[i].FrameIndex = i;
+                    lstFrames.Items.Add(frames[i]);
+                }
+
+                if (frames.Count > 0)
+                {
+                    trackFrame.Maximum = frames.Count - 1;
+                    trackFrame.Value = 0;
+                    lstFrames.SelectedIndex = 0;
+                }
+                else
+                {
+                    trackFrame.Maximum = 0;
+                    trackFrame.Value = 0;
+                    if (picMain.Image != null)
+                    {
+                        picMain.Image.Dispose();
+                        picMain.Image = null;
+                    }
+                    lblAngleName.Text = "Angle: ";
+                    lblThrottleName.Text = "Throttle: ";
+                    prgAngle.Value = 0;
+                    prgThrottle.Value = 0;
+                }
+
+                // 5. 로그 메시지 추가
+                string time = DateTime.Now.ToString("HH:mm:ss");
+                txtLog.AppendText($"[{time}] 필터가 초기화되었습니다. 원본 데이터를 표시합니다." + Environment.NewLine);
+                txtLog.SelectionStart = txtLog.Text.Length;
+                txtLog.ScrollToCaret();
+            }
+            catch (Exception ex)
+            {
+                // 에러 발생 시 로그 반영
+                string errorTime = DateTime.Now.ToString("HH:mm:ss");
+                txtLog.AppendText($"[{errorTime}] ❌ 필터 초기화 에러 발생: {ex.Message}" + Environment.NewLine);
+                txtLog.SelectionStart = txtLog.Text.Length;
+                txtLog.ScrollToCaret();
+            }
         }
 
         /// <summary>
@@ -517,6 +630,9 @@ namespace Datagram
                     prgAngle.Value = 0;
                     prgThrottle.Value = 0;
                 }
+
+                // 원본 데이터도 동기화 (필터 초기화 시 삭제된 프레임이 다시 나타나는 것을 방지)
+                originalFrames = new List<FrameData>(frames);
             }
         }
 
@@ -879,6 +995,9 @@ namespace Datagram
 
             if (frames.Count > 0)
             {
+                // 원본 데이터 저장 (필터 초기화 시 사용)
+                originalFrames = new List<FrameData>(frames);
+
                 trackFrame.Minimum = 0;
                 trackFrame.Maximum = frames.Count - 1;
                 trackFrame.Value = 0;
@@ -1025,6 +1144,11 @@ namespace Datagram
             if (File.Exists(scriptInRoot)) return scriptInRoot;
 
             return null;
+        }
+
+        private void checkBox4_CheckedChanged(object sender, EventArgs e)
+        {
+
         }
     }
 
