@@ -29,7 +29,7 @@ def error(msg):
 
 
 # ── 라이브러리 임포트 ────────────────────────────────────────────────────────
-log("라이브러리 불러오는 중...")
+log("라이브러리 로딩 중...")
 
 missing = []
 try:
@@ -79,7 +79,7 @@ def load_dataset(data_dir, img_size=(120, 160)):
                 except json.JSONDecodeError:
                     continue  # 파싱 불가 라인 조용히 건너뜀
 
-    log(f"주행 데이터 {len(records)}개 불러옴 (파일 {len(catalog_files)}개)")
+    log(f"레코드 {len(records)}개 로드 (catalog {len(catalog_files)}개)")
 
     images_dir = os.path.join(data_dir, "images")
     X, Y_angle, Y_throttle = [], [], []
@@ -105,13 +105,13 @@ def load_dataset(data_dir, img_size=(120, 160)):
         Y_throttle.append(float(rec["user/throttle"]))
 
     if missing_count:
-        log(f"이미지 없음 {missing_count}개 건너뜀")
+        log(f"이미지 누락 {missing_count}개 건너뜀")
 
     X          = np.array(X,          dtype=np.float32)
     Y_angle    = np.array(Y_angle,    dtype=np.float32)
     Y_throttle = np.array(Y_throttle, dtype=np.float32)
 
-    log(f"데이터 준비 완료: {X.shape[0]}개 이미지")
+    log(f"데이터셋 완료: {X.shape[0]}개 이미지")
     return X, Y_angle, Y_throttle
 
 
@@ -170,7 +170,7 @@ def main():
 
     os.makedirs(output_dir, exist_ok=True)
 
-    log("주행 데이터 불러오는 중...")
+    log("데이터 로딩 중...")
     X, Y_angle, Y_throttle = load_dataset(data_dir)
     if len(X) == 0:
         error("유효한 이미지가 없습니다.")
@@ -183,9 +183,9 @@ def main():
     Ya_tr, Ya_val = Y_angle[idx_tr],      Y_angle[idx_val]
     Yt_tr, Yt_val = Y_throttle[idx_tr],   Y_throttle[idx_val]
 
-    log(f"학습용 {len(X_tr)}개 / 검증용 {len(X_val)}개 분리 완료")
+    log(f"학습 {len(X_tr)}개 / 검증 {len(X_val)}개")
 
-    log("AI 모델 생성 중...")
+    log("모델 생성 중...")
     model = build_donkey_model(input_shape=X.shape[1:])
 
     model_path = os.path.join(output_dir, "donkey_model.h5")
@@ -206,8 +206,8 @@ def main():
         ),
     ]
 
-    log(f"AI 학습 시작 (총 {args.epochs}회 반복, 묶음 크기={args.batch_size})")
-    history = model.fit(
+    log(f"학습 시작 (epochs={args.epochs}, batch={args.batch_size})")
+    model.fit(
         X_tr,
         {"n_outputs0": Ya_tr, "n_outputs1": Yt_tr},
         validation_data=(X_val, {"n_outputs0": Ya_val, "n_outputs1": Yt_val}),
@@ -220,38 +220,7 @@ def main():
     if not os.path.exists(model_path):
         model.save(model_path)
 
-    log(f"AI 모델 저장 완료: {model_path}")
-
-    # ── 학습 그래프 저장 ──────────────────────────────────────────────────────
-    try:
-        import matplotlib
-        matplotlib.use("Agg")  # 화면 없이 파일로만 저장
-        import matplotlib.pyplot as plt
-
-        graph_path = os.path.join(output_dir, "loss_graph.png")
-
-        loss     = history.history.get("loss", [])
-        val_loss = history.history.get("val_loss", [])
-        epochs_range = range(1, len(loss) + 1)
-
-        plt.figure(figsize=(10, 5))
-        plt.plot(epochs_range, loss,     "b-o", label="Train Loss",      linewidth=2, markersize=4)
-        plt.plot(epochs_range, val_loss, "r-o", label="Val Loss",        linewidth=2, markersize=4)
-        plt.title("Donkey Car - Training Loss", fontsize=14, fontweight="bold")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss (MSE)")
-        plt.legend()
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(graph_path, dpi=150)
-        plt.close()
-
-        log(f"그래프 저장 완료: {graph_path}")
-        print(f"[GRAPH] {graph_path}", flush=True)
-
-    except Exception as ex:
-        log(f"그래프 저장 실패 (무시): {ex}")
-
+    log(f"모델 저장 완료: {model_path}")
     done(model_path)
 
 
