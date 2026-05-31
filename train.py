@@ -9,6 +9,7 @@ import json
 import glob
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
 
 # TensorFlow 잡음 로그 억제
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -143,14 +144,108 @@ def build_donkey_model(input_shape=(120, 160, 3)):
 
 
 class ProgressCallback(callbacks.Callback):
-    def __init__(self, total):
+    def __init__(self, total, live_plot=False):
         super().__init__()
         self.total = total
+        self.live_plot = live_plot
+        self.epochs = []
+        self.losses = []
+        self.val_losses = []
+        self.fig = None
+        self.ax = None
+        self.train_line = None
+        self.val_line = None
+
+    def on_train_begin(self, logs=None):
+        if not self.live_plot:
+            return
+        plt.ion()
+        self.fig, self.ax = plt.subplots()
+        self.train_line, = self.ax.plot([], [], label="train")
+        self.val_line, = self.ax.plot([], [], label="validate")
+        self.ax.set_title("model loss")
+        self.ax.set_xlabel("epoch")
+        self.ax.set_ylabel("loss")
+        self.ax.legend()
+        self.fig.tight_layout()
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+
+class LiveCompareCallback(callbacks.Callback):
+    def __init__(self, x_sample, y_angle, y_throttle):
+        super().__init__()
+        self.x_sample = x_sample
+        self.y_angle = y_angle
+        self.y_throttle = y_throttle
+        self.fig = None
+        self.ax_angle = None
+        self.ax_throttle = None
+        self.true_angle_line = None
+        self.pred_angle_line = None
+        self.true_throttle_line = None
+        self.pred_throttle_line = None
+
+    def on_train_begin(self, logs=None):
+        plt.ion()
+        self.fig, (self.ax_angle, self.ax_throttle) = plt.subplots(2, 1, sharex=True)
+        self.true_angle_line, = self.ax_angle.plot([], [], label="angle_true")
+        self.pred_angle_line, = self.ax_angle.plot([], [], label="angle_pred")
+        self.ax_angle.set_title("angle: true vs pred")
+        self.ax_angle.set_ylabel("value")
+        self.ax_angle.legend()
+
+        self.true_throttle_line, = self.ax_throttle.plot([], [], label="throttle_true")
+        self.pred_throttle_line, = self.ax_throttle.plot([], [], label="throttle_pred")
+        self.ax_throttle.set_title("throttle: true vs pred")
+        self.ax_throttle.set_xlabel("sample")
+        self.ax_throttle.set_ylabel("value")
+        self.ax_throttle.legend()
+
+        self.fig.tight_layout()
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+    def on_epoch_end(self, epoch, logs=None):
+        if self.x_sample is None or len(self.x_sample) == 0:
+            return
+
+        preds = self.model.predict(self.x_sample, verbose=0)
+        pred_angle = preds[0].reshape(-1)
+        pred_throttle = preds[1].reshape(-1)
+        sample_idx = np.arange(len(self.x_sample))
+
+        self.true_angle_line.set_data(sample_idx, self.y_angle)
+        self.pred_angle_line.set_data(sample_idx, pred_angle)
+        self.ax_angle.relim()
+        self.ax_angle.autoscale_view()
+
+        self.true_throttle_line.set_data(sample_idx, self.y_throttle)
+        self.pred_throttle_line.set_data(sample_idx, pred_throttle)
+        self.ax_throttle.relim()
+        self.ax_throttle.autoscale_view()
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
-        progress(epoch + 1, self.total,
-                 logs.get("loss", 0), logs.get("val_loss", 0))
+        loss = logs.get("loss", 0)
+        val_loss = logs.get("val_loss", 0)
+        progress(epoch + 1, self.total, loss, val_loss)
+
+        if not self.live_plot:
+            return
+
+        self.epochs.append(epoch + 1)
+        self.losses.append(loss)
+        self.val_losses.append(val_loss)
+        self.train_line.set_data(self.epochs, self.losses)
+        self.val_line.set_data(self.epochs, self.val_losses)
+        self.ax.relim()
+        self.ax.autoscale_view()
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
 
 
 # ── 메인 ─────────────────────────────────────────────────────────────────────
@@ -183,6 +278,11 @@ def main():
     Ya_tr, Ya_val = Y_angle[idx_tr],      Y_angle[idx_val]
     Yt_tr, Yt_val = Y_throttle[idx_tr],   Y_throttle[idx_val]
 
+    sample_size = min(200, len(X_val))
+    X_sample = X_val[:sample_size]
+    Ya_sample = Ya_val[:sample_size]
+    Yt_sample = Yt_val[:sample_size]
+
     log(f"학습 {len(X_tr)}개 / 검증 {len(X_val)}개")
 
     log("모델 생성 중...")
@@ -191,7 +291,8 @@ def main():
     model_path = os.path.join(output_dir, "donkey_model.h5")
 
     cb_list = [
-        ProgressCallback(args.epochs),
+        ProgressCallback(args.epochs, live_plot=True),
+        LiveCompareCallback(X_sample, Ya_sample, Yt_sample),
         callbacks.ModelCheckpoint(
             model_path, monitor="val_loss",
             save_best_only=True, verbose=0,
@@ -207,7 +308,7 @@ def main():
     ]
 
     log(f"학습 시작 (epochs={args.epochs}, batch={args.batch_size})")
-    model.fit(
+    history = model.fit(
         X_tr,
         {"n_outputs0": Ya_tr, "n_outputs1": Yt_tr},
         validation_data=(X_val, {"n_outputs0": Ya_val, "n_outputs1": Yt_val}),
@@ -216,6 +317,39 @@ def main():
         callbacks=cb_list,
         verbose=0
     )
+
+    if history is not None and "loss" in history.history:
+        plt.figure()
+        plt.plot(history.history.get("loss", []), label="train")
+        plt.plot(history.history.get("val_loss", []), label="validate")
+        plt.title("model loss")
+        plt.xlabel("epoch")
+        plt.ylabel("loss")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+        angle_loss = history.history.get("n_outputs0_loss", [])
+        val_angle_loss = history.history.get("val_n_outputs0_loss", [])
+        throttle_loss = history.history.get("n_outputs1_loss", [])
+        val_throttle_loss = history.history.get("val_n_outputs1_loss", [])
+
+        if angle_loss or throttle_loss:
+            plt.figure()
+            if angle_loss:
+                plt.plot(angle_loss, label="angle_train")
+            if val_angle_loss:
+                plt.plot(val_angle_loss, label="angle_validate")
+            if throttle_loss:
+                plt.plot(throttle_loss, label="throttle_train")
+            if val_throttle_loss:
+                plt.plot(val_throttle_loss, label="throttle_validate")
+            plt.title("output losses")
+            plt.xlabel("epoch")
+            plt.ylabel("loss")
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
 
     if not os.path.exists(model_path):
         model.save(model_path)

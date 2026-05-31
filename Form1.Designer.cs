@@ -71,11 +71,11 @@
             this.txtPath.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtPath.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtPath.ForeColor = System.Drawing.Color.White;
-            this.txtPath.Location = new System.Drawing.Point(140, 22);
+            this.txtPath.Location = new System.Drawing.Point(160, 28);
             this.txtPath.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtPath.Name = "txtPath";
             this.txtPath.ReadOnly = true;
-            this.txtPath.Size = new System.Drawing.Size(707, 27);
+            this.txtPath.Size = new System.Drawing.Size(835, 32);
             this.txtPath.TabIndex = 0;
             // 
             // btnLoad
@@ -86,10 +86,10 @@
             this.btnLoad.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLoad.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnLoad.ForeColor = System.Drawing.Color.White;
-            this.btnLoad.Location = new System.Drawing.Point(893, 10);
+            this.btnLoad.Location = new System.Drawing.Point(1016, 11);
             this.btnLoad.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnLoad.Name = "btnLoad";
-            this.btnLoad.Size = new System.Drawing.Size(102, 50);
+            this.btnLoad.Size = new System.Drawing.Size(117, 62);
             this.btnLoad.TabIndex = 1;
             this.btnLoad.Text = "폴더 선택";
             this.btnLoad.UseVisualStyleBackColor = false;
@@ -101,10 +101,10 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.picMain.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(24)))));
             this.picMain.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.picMain.Location = new System.Drawing.Point(10, 66);
+            this.picMain.Location = new System.Drawing.Point(11, 82);
             this.picMain.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.picMain.Name = "picMain";
-            this.picMain.Size = new System.Drawing.Size(822, 283);
+            this.picMain.Size = new System.Drawing.Size(984, 353);
             this.picMain.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picMain.TabIndex = 2;
             this.picMain.TabStop = false;
@@ -114,10 +114,10 @@
             this.prgAngle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.prgAngle.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.prgAngle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(200)))), ((int)(((byte)(100)))));
-            this.prgAngle.Location = new System.Drawing.Point(893, 81);
+            this.prgAngle.Location = new System.Drawing.Point(1077, 101);
             this.prgAngle.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.prgAngle.Name = "prgAngle";
-            this.prgAngle.Size = new System.Drawing.Size(219, 34);
+            this.prgAngle.Size = new System.Drawing.Size(250, 42);
             this.prgAngle.TabIndex = 3;
             // 
             // prgThrottle
@@ -125,10 +125,10 @@
             this.prgThrottle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.prgThrottle.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.prgThrottle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(150)))), ((int)(((byte)(255)))));
-            this.prgThrottle.Location = new System.Drawing.Point(893, 135);
+            this.prgThrottle.Location = new System.Drawing.Point(1077, 169);
             this.prgThrottle.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.prgThrottle.Name = "prgThrottle";
-            this.prgThrottle.Size = new System.Drawing.Size(219, 33);
+            this.prgThrottle.Size = new System.Drawing.Size(250, 41);
             this.prgThrottle.TabIndex = 4;
             // 
             // lblMain
@@ -136,9 +136,9 @@
             this.lblMain.AutoSize = true;
             this.lblMain.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblMain.ForeColor = System.Drawing.Color.LightGray;
-            this.lblMain.Location = new System.Drawing.Point(4, 20);
+            this.lblMain.Location = new System.Drawing.Point(5, 25);
             this.lblMain.Name = "lblMain";
-            this.lblMain.Size = new System.Drawing.Size(123, 25);
+            this.lblMain.Size = new System.Drawing.Size(149, 31);
             this.lblMain.TabIndex = 5;
             this.lblMain.Text = "Catalog Path:";
             // 
@@ -146,11 +146,11 @@
             // 
             this.lblAngleName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblAngleName.AutoSize = true;
-            this.lblAngleName.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblAngleName.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblAngleName.ForeColor = System.Drawing.Color.LightGray;
-            this.lblAngleName.Location = new System.Drawing.Point(837, 92);
+            this.lblAngleName.Location = new System.Drawing.Point(1012, 114);
             this.lblAngleName.Name = "lblAngleName";
-            this.lblAngleName.Size = new System.Drawing.Size(41, 15);
+            this.lblAngleName.Size = new System.Drawing.Size(54, 20);
             this.lblAngleName.TabIndex = 6;
             this.lblAngleName.Text = "Angle:";
             // 
@@ -158,11 +158,11 @@
             // 
             this.lblThrottleName.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblThrottleName.AutoSize = true;
-            this.lblThrottleName.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblThrottleName.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblThrottleName.ForeColor = System.Drawing.Color.LightGray;
-            this.lblThrottleName.Location = new System.Drawing.Point(837, 148);
+            this.lblThrottleName.Location = new System.Drawing.Point(1001, 181);
             this.lblThrottleName.Name = "lblThrottleName";
-            this.lblThrottleName.Size = new System.Drawing.Size(52, 15);
+            this.lblThrottleName.Size = new System.Drawing.Size(70, 20);
             this.lblThrottleName.TabIndex = 7;
             this.lblThrottleName.Text = "Throttle:";
             // 
@@ -174,21 +174,21 @@
             this.lstFrames.Font = new System.Drawing.Font("Consolas", 9F);
             this.lstFrames.ForeColor = System.Drawing.Color.White;
             this.lstFrames.FormattingEnabled = true;
-            this.lstFrames.ItemHeight = 14;
-            this.lstFrames.Location = new System.Drawing.Point(840, 186);
+            this.lstFrames.ItemHeight = 18;
+            this.lstFrames.Location = new System.Drawing.Point(1016, 232);
             this.lstFrames.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.lstFrames.Name = "lstFrames";
-            this.lstFrames.Size = new System.Drawing.Size(273, 158);
+            this.lstFrames.Size = new System.Drawing.Size(311, 184);
             this.lstFrames.TabIndex = 8;
             // 
             // trackFrame
             // 
             this.trackFrame.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.trackFrame.Location = new System.Drawing.Point(442, 355);
+            this.trackFrame.Location = new System.Drawing.Point(505, 444);
             this.trackFrame.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.trackFrame.Name = "trackFrame";
-            this.trackFrame.Size = new System.Drawing.Size(669, 45);
+            this.trackFrame.Size = new System.Drawing.Size(821, 56);
             this.trackFrame.TabIndex = 9;
             // 
             // btnFilter
@@ -199,10 +199,10 @@
             this.btnFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnFilter.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnFilter.ForeColor = System.Drawing.Color.White;
-            this.btnFilter.Location = new System.Drawing.Point(302, 33);
+            this.btnFilter.Location = new System.Drawing.Point(345, 41);
             this.btnFilter.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnFilter.Name = "btnFilter";
-            this.btnFilter.Size = new System.Drawing.Size(107, 47);
+            this.btnFilter.Size = new System.Drawing.Size(122, 59);
             this.btnFilter.TabIndex = 10;
             this.btnFilter.Text = "⫷ 필터 적용";
             this.btnFilter.UseVisualStyleBackColor = false;
@@ -215,10 +215,10 @@
             this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDelete.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnDelete.ForeColor = System.Drawing.Color.White;
-            this.btnDelete.Location = new System.Drawing.Point(454, 445);
+            this.btnDelete.Location = new System.Drawing.Point(519, 556);
             this.btnDelete.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(125, 48);
+            this.btnDelete.Size = new System.Drawing.Size(143, 60);
             this.btnDelete.TabIndex = 11;
             this.btnDelete.Text = "🗑 프레임 삭제";
             this.btnDelete.UseVisualStyleBackColor = false;
@@ -231,10 +231,10 @@
             this.btnTrain.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnTrain.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnTrain.ForeColor = System.Drawing.Color.White;
-            this.btnTrain.Location = new System.Drawing.Point(942, 445);
+            this.btnTrain.Location = new System.Drawing.Point(1133, 556);
             this.btnTrain.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnTrain.Name = "btnTrain";
-            this.btnTrain.Size = new System.Drawing.Size(158, 48);
+            this.btnTrain.Size = new System.Drawing.Size(181, 60);
             this.btnTrain.TabIndex = 12;
             this.btnTrain.Text = "▶ AI 학습 시작";
             this.btnTrain.UseVisualStyleBackColor = false;
@@ -245,10 +245,10 @@
             this.txtLog.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.txtLog.Font = new System.Drawing.Font("Consolas", 9F);
             this.txtLog.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(180)))), ((int)(((byte)(255)))), ((int)(((byte)(180)))));
-            this.txtLog.Location = new System.Drawing.Point(0, 517);
+            this.txtLog.Location = new System.Drawing.Point(0, 647);
             this.txtLog.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtLog.Name = "txtLog";
-            this.txtLog.Size = new System.Drawing.Size(1123, 125);
+            this.txtLog.Size = new System.Drawing.Size(1339, 155);
             this.txtLog.TabIndex = 13;
             this.txtLog.Text = "";
             // 
@@ -258,10 +258,10 @@
             this.btnplay.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnplay.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnplay.ForeColor = System.Drawing.SystemColors.HighlightText;
-            this.btnplay.Location = new System.Drawing.Point(561, 392);
+            this.btnplay.Location = new System.Drawing.Point(641, 490);
             this.btnplay.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnplay.Name = "btnplay";
-            this.btnplay.Size = new System.Drawing.Size(65, 39);
+            this.btnplay.Size = new System.Drawing.Size(74, 49);
             this.btnplay.TabIndex = 14;
             this.btnplay.Text = "▶";
             this.btnplay.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -273,10 +273,10 @@
             this.btnpurse.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnpurse.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnpurse.ForeColor = System.Drawing.SystemColors.HighlightText;
-            this.btnpurse.Location = new System.Drawing.Point(636, 392);
+            this.btnpurse.Location = new System.Drawing.Point(727, 490);
             this.btnpurse.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnpurse.Name = "btnpurse";
-            this.btnpurse.Size = new System.Drawing.Size(61, 39);
+            this.btnpurse.Size = new System.Drawing.Size(70, 49);
             this.btnpurse.TabIndex = 15;
             this.btnpurse.Text = "⏸";
             this.btnpurse.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -288,10 +288,10 @@
             this.btnnext.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnnext.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btnnext.ForeColor = System.Drawing.SystemColors.HighlightText;
-            this.btnnext.Location = new System.Drawing.Point(708, 392);
+            this.btnnext.Location = new System.Drawing.Point(809, 490);
             this.btnnext.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnnext.Name = "btnnext";
-            this.btnnext.Size = new System.Drawing.Size(101, 39);
+            this.btnnext.Size = new System.Drawing.Size(115, 49);
             this.btnnext.TabIndex = 16;
             this.btnnext.Text = "▶▶";
             this.btnnext.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -303,10 +303,10 @@
             this.btntrace.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btntrace.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.btntrace.ForeColor = System.Drawing.SystemColors.MenuBar;
-            this.btntrace.Location = new System.Drawing.Point(454, 392);
+            this.btntrace.Location = new System.Drawing.Point(519, 490);
             this.btntrace.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btntrace.Name = "btntrace";
-            this.btntrace.Size = new System.Drawing.Size(96, 39);
+            this.btntrace.Size = new System.Drawing.Size(110, 49);
             this.btntrace.TabIndex = 17;
             this.btntrace.Text = "◀◀";
             this.btntrace.TextAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -317,10 +317,10 @@
             this.cbboxspeed.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
             this.cbboxspeed.Font = new System.Drawing.Font("굴림", 24F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.cbboxspeed.FormattingEnabled = true;
-            this.cbboxspeed.Location = new System.Drawing.Point(820, 391);
+            this.cbboxspeed.Location = new System.Drawing.Point(937, 489);
             this.cbboxspeed.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.cbboxspeed.Name = "cbboxspeed";
-            this.cbboxspeed.Size = new System.Drawing.Size(106, 40);
+            this.cbboxspeed.Size = new System.Drawing.Size(121, 48);
             this.cbboxspeed.TabIndex = 18;
             // 
             // gbfilter
@@ -336,11 +336,13 @@
             this.gbfilter.Controls.Add(this.btnreset);
             this.gbfilter.Controls.Add(this.btnFilter);
             this.gbfilter.Controls.Add(this.cbox4);
-            this.gbfilter.Font = new System.Drawing.Font("Segoe UI", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.gbfilter.Font = new System.Drawing.Font("Segoe UI", 16.2F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.gbfilter.ForeColor = System.Drawing.SystemColors.Control;
-            this.gbfilter.Location = new System.Drawing.Point(21, 354);
+            this.gbfilter.Location = new System.Drawing.Point(24, 442);
+            this.gbfilter.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.gbfilter.Name = "gbfilter";
-            this.gbfilter.Size = new System.Drawing.Size(415, 158);
+            this.gbfilter.Padding = new System.Windows.Forms.Padding(3, 4, 3, 4);
+            this.gbfilter.Size = new System.Drawing.Size(474, 198);
             this.gbfilter.TabIndex = 19;
             this.gbfilter.TabStop = false;
             this.gbfilter.Text = "데이터 필터링";
@@ -351,9 +353,10 @@
             this.cbboxtub.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbboxtub.ForeColor = System.Drawing.Color.White;
             this.cbboxtub.FormattingEnabled = true;
-            this.cbboxtub.Location = new System.Drawing.Point(175, 84);
+            this.cbboxtub.Location = new System.Drawing.Point(200, 105);
+            this.cbboxtub.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cbboxtub.Name = "cbboxtub";
-            this.cbboxtub.Size = new System.Drawing.Size(121, 25);
+            this.cbboxtub.Size = new System.Drawing.Size(138, 29);
             this.cbboxtub.TabIndex = 16;
             // 
             // cbox1
@@ -361,9 +364,10 @@
             this.cbox1.AutoSize = true;
             this.cbox1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbox1.ForeColor = System.Drawing.Color.White;
-            this.cbox1.Location = new System.Drawing.Point(6, 34);
+            this.cbox1.Location = new System.Drawing.Point(7, 42);
+            this.cbox1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cbox1.Name = "cbox1";
-            this.cbox1.Size = new System.Drawing.Size(126, 21);
+            this.cbox1.Size = new System.Drawing.Size(161, 27);
             this.cbox1.TabIndex = 12;
             this.cbox1.Text = "직진 데이터 제외";
             this.cbox1.UseVisualStyleBackColor = true;
@@ -373,9 +377,10 @@
             this.cbox3.AutoSize = true;
             this.cbox3.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbox3.ForeColor = System.Drawing.Color.White;
-            this.cbox3.Location = new System.Drawing.Point(6, 84);
+            this.cbox3.Location = new System.Drawing.Point(7, 105);
+            this.cbox3.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cbox3.Name = "cbox3";
-            this.cbox3.Size = new System.Drawing.Size(173, 21);
+            this.cbox3.Size = new System.Drawing.Size(222, 27);
             this.cbox3.TabIndex = 15;
             this.cbox3.Text = "특정 주행 회차(Tub) 선택";
             this.cbox3.UseVisualStyleBackColor = true;
@@ -386,9 +391,9 @@
             this.lbl1.AutoSize = true;
             this.lbl1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lbl1.ForeColor = System.Drawing.Color.White;
-            this.lbl1.Location = new System.Drawing.Point(136, 55);
+            this.lbl1.Location = new System.Drawing.Point(155, 69);
             this.lbl1.Name = "lbl1";
-            this.lbl1.Size = new System.Drawing.Size(68, 17);
+            this.lbl1.Size = new System.Drawing.Size(89, 23);
             this.lbl1.TabIndex = 0;
             this.lbl1.Text = "( |Angle| ≥";
             // 
@@ -398,9 +403,10 @@
             this.nud1.DecimalPlaces = 1;
             this.nud1.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.nud1.ForeColor = System.Drawing.Color.White;
-            this.nud1.Location = new System.Drawing.Point(204, 55);
+            this.nud1.Location = new System.Drawing.Point(233, 69);
+            this.nud1.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.nud1.Name = "nud1";
-            this.nud1.Size = new System.Drawing.Size(43, 25);
+            this.nud1.Size = new System.Drawing.Size(49, 29);
             this.nud1.TabIndex = 1;
             this.nud1.Value = new decimal(new int[] {
             6,
@@ -413,9 +419,9 @@
             this.lbl2.AutoSize = true;
             this.lbl2.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lbl2.ForeColor = System.Drawing.Color.White;
-            this.lbl2.Location = new System.Drawing.Point(250, 55);
+            this.lbl2.Location = new System.Drawing.Point(286, 69);
             this.lbl2.Name = "lbl2";
-            this.lbl2.Size = new System.Drawing.Size(12, 17);
+            this.lbl2.Size = new System.Drawing.Size(15, 23);
             this.lbl2.TabIndex = 2;
             this.lbl2.Text = ")";
             // 
@@ -424,9 +430,10 @@
             this.cbox2.AutoSize = true;
             this.cbox2.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbox2.ForeColor = System.Drawing.Color.White;
-            this.cbox2.Location = new System.Drawing.Point(6, 57);
+            this.cbox2.Location = new System.Drawing.Point(7, 71);
+            this.cbox2.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cbox2.Name = "cbox2";
-            this.cbox2.Size = new System.Drawing.Size(139, 21);
+            this.cbox2.Size = new System.Drawing.Size(178, 27);
             this.cbox2.TabIndex = 14;
             this.cbox2.Text = "급커브 구간만 보기";
             this.cbox2.UseVisualStyleBackColor = true;
@@ -439,10 +446,10 @@
             this.btnreset.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnreset.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnreset.ForeColor = System.Drawing.Color.White;
-            this.btnreset.Location = new System.Drawing.Point(302, 98);
+            this.btnreset.Location = new System.Drawing.Point(345, 122);
             this.btnreset.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnreset.Name = "btnreset";
-            this.btnreset.Size = new System.Drawing.Size(107, 44);
+            this.btnreset.Size = new System.Drawing.Size(122, 55);
             this.btnreset.TabIndex = 11;
             this.btnreset.Text = "⫷필터 초기화";
             this.btnreset.UseVisualStyleBackColor = false;
@@ -452,19 +459,20 @@
             this.cbox4.AutoSize = true;
             this.cbox4.Font = new System.Drawing.Font("Segoe UI", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbox4.ForeColor = System.Drawing.Color.White;
-            this.cbox4.Location = new System.Drawing.Point(6, 111);
+            this.cbox4.Location = new System.Drawing.Point(7, 139);
+            this.cbox4.Margin = new System.Windows.Forms.Padding(3, 4, 3, 4);
             this.cbox4.Name = "cbox4";
-            this.cbox4.Size = new System.Drawing.Size(130, 21);
+            this.cbox4.Size = new System.Drawing.Size(166, 27);
             this.cbox4.TabIndex = 13;
             this.cbox4.Text = "정지 및 후진 제외";
             this.cbox4.UseVisualStyleBackColor = true;
             // 
             // Form1
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.ClientSize = new System.Drawing.Size(1123, 642);
+            this.ClientSize = new System.Drawing.Size(1339, 802);
             this.Controls.Add(this.cbboxspeed);
             this.Controls.Add(this.btntrace);
             this.Controls.Add(this.btnnext);
@@ -485,7 +493,7 @@
             this.Controls.Add(this.txtPath);
             this.Controls.Add(this.gbfilter);
             this.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
-            this.MinimumSize = new System.Drawing.Size(877, 568);
+            this.MinimumSize = new System.Drawing.Size(1000, 698);
             this.Name = "Form1";
             this.Text = "Datagram";
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).EndInit();
