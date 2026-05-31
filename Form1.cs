@@ -22,6 +22,7 @@ namespace Datagram
         private float playbackSpeed = 1.0f;
         private bool isUserInteracting = false;
         private bool isPlaybackActive = false;  // 재생 중 플래그
+        private GraphWindow _graphWindow;
 
         public Form1()
         {
@@ -39,6 +40,7 @@ namespace Datagram
             btnFilter.Click += BtnFilter_Click;
             btnDelete.Click += BtnDelete_Click;
             btnTrain.Click += BtnTrain_Click;
+            btnGraph.Click += BtnGraph_Click;
 
             // 다중 선택 모드 활성화 (Ctrl/Shift + 클릭으로 다중 선택 가능)
             lstFrames.SelectionMode = SelectionMode.MultiExtended;
@@ -93,6 +95,23 @@ namespace Datagram
             AddLog($"재생 속도 설정: {cbboxspeed.SelectedItem}");
         }
 
+        private void BtnGraph_Click(object sender, EventArgs e)
+        {
+            if (_graphWindow == null || _graphWindow.IsDisposed)
+            {
+                _graphWindow = new GraphWindow();
+                _graphWindow.Show(this);
+
+                // 이미 폴더가 로드된 상태면 데이터 전달
+                if (frames.Count > 0)
+                    _graphWindow.LoadFromFolder(currentFolder, frames);
+            }
+            else
+            {
+                _graphWindow.Focus();
+            }
+        }
+
         private async void BtnTrain_Click(object sender, EventArgs e)
         {
             string imageFolder = txtPath.Text.Trim();
@@ -106,6 +125,15 @@ namespace Datagram
             // 버튼 비활성화 (중복 클릭 방지)
             btnTrain.Enabled = false;
             AddLog("환경 확인 중...");
+            if (_graphWindow == null || _graphWindow.IsDisposed)
+            {
+                _graphWindow = new GraphWindow();
+                _graphWindow.Show(this);
+            }
+            // 현재 로드된 데이터 전달
+            if (frames.Count > 0)
+                _graphWindow.LoadFromFolder(currentFolder, frames);
+            _graphWindow.Focus();
 
             // 백그라운드에서 설치 확인 및 설치 진행
             bool ready = await Task.Run(() =>
@@ -133,7 +161,7 @@ namespace Datagram
             ProcessStartInfo psi = new ProcessStartInfo
             {
                 FileName = "python",
-                Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\"",
+                Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\" --epochs {(int)nudEpochs.Value}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -147,8 +175,81 @@ namespace Datagram
 
             process.OutputDataReceived += (s, args) =>
             {
-                if (!string.IsNullOrEmpty(args.Data))
-                    Invoke(new Action(() => txtLog.AppendText(args.Data + Environment.NewLine)));
+                if (string.IsNullOrEmpty(args.Data)) return;
+                string line = args.Data;
+
+                Invoke(new Action(() =>
+                {
+                    // [PROGRESS] 는 한글로 변환해서 출력
+                    if (line.StartsWith("[PROGRESS]"))
+                    {
+                        try
+                        {
+                            var parts = line.Substring("[PROGRESS]".Length).Trim().Split(' ');
+                            int epoch = 0, totalEpochs = 30;
+                            double loss = 0, valLoss = 0;
+                            foreach (var part in parts)
+                            {
+                                var kv = part.Split('=');
+                                if (kv.Length < 2) continue;
+                                switch (kv[0])
+                                {
+                                    case "epoch":
+                                        var ep = kv[1].Split('/');
+                                        epoch = int.Parse(ep[0]);
+                                        totalEpochs = int.Parse(ep[1]);
+                                        break;
+                                    case "loss":
+                                        loss = double.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture);
+                                        break;
+                                    case "val_loss":
+                                        valLoss = double.Parse(kv[1], System.Globalization.CultureInfo.InvariantCulture);
+                                        break;
+                                }
+                            }
+
+                            // 한글로 출력
+                            txtLog.AppendText($"[학습 {epoch}/{totalEpochs}회] 학습오차: {loss:F4}  검증오차: {valLoss:F4}{Environment.NewLine}");
+
+                            // 그래프 창 업데이트
+                            if (_graphWindow != null && !_graphWindow.IsDisposed)
+                                _graphWindow.AddTrainEpoch(epoch, totalEpochs, loss, valLoss);
+                        }
+                        catch
+                        {
+                            txtLog.AppendText(line + Environment.NewLine);
+                        }
+                    }
+                    else if (line.StartsWith("[DONE]"))
+                    {
+                        txtLog.AppendText($"✅ 학습 완료! 모델 저장: {line.Substring("[DONE]".Length).Trim()}{Environment.NewLine}");
+                        if (_graphWindow != null && !_graphWindow.IsDisposed)
+                            _graphWindow.TrainFinished();
+                    }
+                    else if (line.StartsWith("[LOG]"))
+                    {
+                        txtLog.AppendText(line.Substring("[LOG]".Length).Trim() + Environment.NewLine);
+                    }
+                    else if (line.StartsWith("[ERROR]"))
+                    {
+                        // TF 잡음 로그는 숨기기
+                        string err = line.Substring("[ERROR]".Length).Trim();
+                        if (!err.Contains("oneDNN") && !err.Contains("absl") &&
+                            !err.Contains("cpu_feature") && !err.Contains("port.cc") &&
+                            !err.Contains("WARNING"))
+                        {
+                            txtLog.AppendText($"[오류] {err}{Environment.NewLine}");
+                        }
+                    }
+                    else
+                    {
+                        txtLog.AppendText(line + Environment.NewLine);
+                    }
+
+                    txtLog.SelectionStart = txtLog.Text.Length;
+                    txtLog.ScrollToCaret();
+                }));
+            
             };
 
             process.ErrorDataReceived += (s, args) =>
@@ -920,6 +1021,8 @@ namespace Datagram
                     currentFolder = fbd.SelectedPath;
                     txtPath.Text = currentFolder;
                     LoadCatalog(currentFolder);
+                    if (_graphWindow != null && !_graphWindow.IsDisposed)
+                        _graphWindow.LoadFromFolder(currentFolder, frames);
                 }
             }
         }
