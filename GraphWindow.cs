@@ -226,21 +226,40 @@ namespace Datagram
             Panel descPanel = new Panel
             {
                 Dock      = DockStyle.Bottom,
-                Height    = 60,
+                Height    = 58,
                 BackColor = Color.FromArgb(30, 30, 30),
                 Padding   = new Padding(10, 6, 10, 6)
             };
 
+            // 설명 패널을 두 줄로 분리
+            Panel descInner = new Panel { Dock = DockStyle.Fill };
+
             Label lblDesc = new Label
             {
-                Dock      = DockStyle.Fill,
+                Dock      = DockStyle.Top,
+                Height    = 28,
                 ForeColor = Color.FromArgb(160, 160, 160),
-                Font      = new Font("Segoe UI", 8.5f),
+                Font      = new Font("Segoe UI", 8.2f),
                 TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-                Text      = "📌  학습횟수: 전체 데이터를 반복 학습한 횟수  │  학습오차: 학습 데이터의 오차 (낮을수록 좋음)  │  검증오차: 실제 성능 지표 (낮을수록 좋음)  │  최저점(★): 가장 좋은 성능의 학습 시점  │  오차차이가 클수록 과적합 의심"
+                Padding   = new Padding(4, 0, 0, 0),
+                Text      = "📌  학습횟수: 전체 데이터를 반복 학습한 횟수  │  학습오차: 학습 데이터의 오차 (낮을수록 좋음)  │  검증오차: 실제 성능 지표 (낮을수록 좋음)  │  최저점(★): 가장 좋은 성능의 학습 시점"
             };
 
-            descPanel.Controls.Add(lblDesc);
+            Label lblScoreDesc = new Label
+            {
+                Dock      = DockStyle.Top,
+                Height    = 28,
+                ForeColor = Color.FromArgb(130, 180, 255),
+                Font      = new Font("Segoe UI", 8.2f),
+                TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                Padding   = new Padding(4, 0, 0, 0),
+                Text      = "🏆  점수 기준 (검증오차 기반)  │  S(90~100점): 0.01 이하  │  A(70~89점): 0.05 이하  │  B(50~69점): 0.15 이하  │  C(30~49점): 0.30 이하  │  D(0~29점): 0.30 초과"
+            };
+
+            descInner.Controls.Add(lblDesc);
+            descInner.Controls.Add(lblScoreDesc);
+
+            descPanel.Controls.Add(descInner);
 
             page.Controls.Add(trainGraph);
             page.Controls.Add(descPanel);
@@ -255,7 +274,7 @@ namespace Datagram
                 trainGraph.AddEpoch(epoch, loss, valLoss);
                 lblEpochInfo.Text = $"학습 {epoch} / {totalEpochs}회   |   학습오차: {loss:F6}   |   검증오차: {valLoss:F6}";
                 double best = trainGraph.BestValLoss;
-                lblBestVal.Text = best < double.MaxValue ? $"최저 검증오차: {best:F6}" : "";
+                lblBestVal.Text = "";
                 if (epoch == 1) tabControl.SelectedTab = tabTrain;
 
                 // 점수 계산 (100점 만점)
@@ -345,7 +364,7 @@ namespace Datagram
         private bool _showThrottle = true;
         private int  _hoveredIdx   = -1;
 
-        private const int PL = 55, PR = 15, PT = 20, PB = 35;
+        private const int PL = 85, PR = 15, PT = 20, PB = 35;
 
         private readonly Color CAngle    = Color.FromArgb(80,  180, 255);
         private readonly Color CThrottle = Color.FromArgb(255, 140,  60);
@@ -427,7 +446,8 @@ namespace Datagram
                 {
                     float y = ValueY(v);
                     g.DrawLine(pen, PL, y, Width - PR, y);
-                    g.DrawString(v.ToString("F1"), font, br, 1, y - 7);
+                    SizeF ts2 = g.MeasureString(v.ToString("F1"), font);
+                    g.DrawString(v.ToString("F1"), font, br, PL - ts2.Width - 3, y - ts2.Height / 2);
                 }
             }
         }
@@ -635,7 +655,8 @@ namespace Datagram
                     float  y = PT + graphH * i / 5;
                     double v = maxL * (1.0 - (double)i / 5);
                     g.DrawLine(pen, PL, y, Width - PR, y);
-                    g.DrawString(v.ToString("F5"), font, br, 1, y - 7);
+                    SizeF ts = g.MeasureString(v.ToString("F5"), font);
+                    g.DrawString(v.ToString("F5"), font, br, PL - ts.Width - 3, y - ts.Height / 2);
                 }
             }
         }
@@ -658,7 +679,7 @@ namespace Datagram
 
                 using (Font lf = new Font("Segoe UI", 8f))
                 {
-                    g.DrawString("오차",  lf, br, 1, PT);
+                    g.DrawString("오차",  lf, br, 2, PT);
                     g.DrawString("학습횟수", lf, br, PL + (Width - PL - PR) / 2 - 18, Height - PB + 18);
                 }
             }
@@ -675,7 +696,14 @@ namespace Datagram
             using (SolidBrush br = new SolidBrush(CBest))
             {
                 g.DrawLine(pen, PL, y, Width - PR, y);
-                g.DrawString($"최저: {BestValLoss:F5}", font, br, Width - PR - 110, y - 12);
+                // 텍스트를 그래프 안쪽 왼쪽에 표시 (잘림 방지)
+                SizeF textSize = g.MeasureString($"최저: {BestValLoss:F5}", font);
+                float textX = PL + 8;
+                float textY = y - textSize.Height - 2;
+                if (textY < PT) textY = y + 4;
+                using (SolidBrush bgBr = new SolidBrush(Color.FromArgb(180, 18, 18, 18)))
+                    g.FillRectangle(bgBr, textX - 2, textY - 1, textSize.Width + 4, textSize.Height + 2);
+                g.DrawString($"최저: {BestValLoss:F5}", font, br, textX, textY);
             }
         }
 
