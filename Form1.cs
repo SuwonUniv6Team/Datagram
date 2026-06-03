@@ -23,6 +23,8 @@ namespace Datagram
         private bool isUserInteracting = false;
         private bool isPlaybackActive = false;  // 재생 중 플래그
         private GraphWindow _graphWindow;
+        private Process _trainProcess;
+        private bool _isTraining = false;
 
         // 범위 선택 기능 관련 변수
         private int rangeStartIndex = -1;
@@ -121,7 +123,26 @@ namespace Datagram
 
         private async void BtnTrain_Click(object sender, EventArgs e)
         {
-            string imageFolder = txtPath.Text.Trim();
+            if (_isTraining)
+            {
+                try
+                {
+                    if (_trainProcess != null && !_trainProcess.HasExited)
+                    {
+                        _trainProcess.Kill();
+                        AddLog("⛔ 학습이 중단되었습니다.");
+                    }
+                }
+                catch { }
+                _isTraining = false;
+                btnTrain.Text = "▶ AI 학습 시작";
+                btnTrain.BackColor = Color.FromArgb(0, 180, 100);
+                btnTrain.Enabled = true;
+                return;
+            }
+
+            string imageFolder = PrepareTrainingFolder();
+            if (imageFolder == null) return;
 
             if (!Directory.Exists(imageFolder))
             {
@@ -130,7 +151,10 @@ namespace Datagram
             }
 
             // 버튼 비활성화 (중복 클릭 방지)
-            btnTrain.Enabled = false;
+            _isTraining = true;
+            btnTrain.Text = "⛔ 학습 중지";
+            btnTrain.BackColor = Color.FromArgb(200, 60, 60);
+            btnTrain.Enabled = true;
             AddLog("환경 확인 중...");
             if (_graphWindow == null || _graphWindow.IsDisposed)
             {
@@ -149,10 +173,22 @@ namespace Datagram
                 return starter.EnsureReady();
             });
 
+            // 설치 확인 중에 중지 버튼 눌렀으면 여기서 중단
+            if (!_isTraining)
+            {
+                AddLog("⛔ 학습이 취소되었습니다.");
+                btnTrain.Text = "▶ AI 학습 시작";
+                btnTrain.BackColor = Color.FromArgb(0, 180, 100);
+                return;
+            }
+
             if (!ready)
             {
-                AddLog("❌ 환경 준비 실패. 학습을 시작할 수 없습니다.");
+                _isTraining = false;
+                btnTrain.Text = "▶ AI 학습 시작";
+                btnTrain.BackColor = Color.FromArgb(0, 180, 100);
                 btnTrain.Enabled = true;
+                AddLog("❌ 환경 준비 실패. 학습을 시작할 수 없습니다.");
                 return;
             }
 
@@ -261,16 +297,29 @@ namespace Datagram
 
             process.ErrorDataReceived += (s, args) =>
             {
-                if (!string.IsNullOrEmpty(args.Data))
-                    Invoke(new Action(() => txtLog.AppendText("[ERROR] " + args.Data + Environment.NewLine)));
+                if (string.IsNullOrEmpty(args.Data)) return;
+                string err = args.Data.Trim();
+                if (!err.Contains("oneDNN") && !err.Contains("absl") &&
+                    !err.Contains("cpu_feature") && !err.Contains("port.cc") &&
+                    !err.Contains("WARNING"))
+                {
+                    Invoke(new Action(() => txtLog.AppendText($"[오류] {err}{Environment.NewLine}")));
+                }
             };
 
             process.Exited += (s, args) =>
             {
-                Invoke(new Action(() => btnTrain.Enabled = true));
+                Invoke(new Action(() =>
+                {
+                    _isTraining = false;
+                    btnTrain.Text = "▶ AI 학습 시작";
+                    btnTrain.BackColor = Color.FromArgb(0, 180, 100);
+                    btnTrain.Enabled = true;
+                }));
             };
 
             process.Start();
+            _trainProcess = process;
             AddLog($"AI 학습 시작: {scriptPath}");
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
@@ -1560,6 +1609,78 @@ namespace Datagram
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private string PrepareTrainingFolder()
+        {
+            string baseFolder = txtPath.Text.Trim();
+            if (!Directory.Exists(baseFolder))
+            {
+                MessageBox.Show("폴더가 존재하지 않습니다.");
+                return null;
+            }
+
+            // 필터링 안된 상태면 원본 폴더 그대로 사용
+            if (frames.Count == originalFrames.Count)
+            {
+                AddLog("필터링 없음 - 전체 데이터로 학습합니다.");
+                return baseFolder;
+            }
+
+            // 임시 학습 폴더 생성
+            string tempFolder = Path.Combine(baseFolder, "_train_temp");
+            string tempImages = Path.Combine(tempFolder, "images");
+
+            try
+            {
+                // 기존 임시 폴더 삭제 후 재생성
+                if (Directory.Exists(tempFolder))
+                    Directory.Delete(tempFolder, true);
+                Directory.CreateDirectory(tempImages);
+
+                // 필터링된 프레임의 이미지만 복사
+                int copied = 0;
+                foreach (var frame in frames)
+                {
+                    string src = Path.Combine(baseFolder, "images", frame.ImagePath);
+                    string dst = Path.Combine(tempImages, frame.ImagePath);
+                    if (File.Exists(src))
+                    {
+                        File.Copy(src, dst, true);
+                        copied++;
+                    }
+                }
+
+                // 필터링된 프레임으로 임시 catalog 파일 생성
+                string tempCatalog = Path.Combine(tempFolder, "catalog_filtered.catalog");
+                var lines = new List<string>();
+
+                // 원본 catalog에서 필터링된 프레임 라인만 추출
+                var validImages = new HashSet<string>(frames.Select(f => f.ImagePath));
+                foreach (var file in Directory.GetFiles(baseFolder, "*.catalog")
+                    .Where(f => !f.EndsWith(".catalog_manifest")))
+                {
+                    foreach (var line in File.ReadAllLines(file, System.Text.Encoding.UTF8))
+                    {
+                        if (string.IsNullOrWhiteSpace(line)) continue;
+                        // 해당 라인이 필터링된 프레임 중 하나인지 확인
+                        if (validImages.Any(img => line.Contains(img)))
+                            lines.Add(line);
+                    }
+                }
+
+                File.WriteAllLines(tempCatalog, lines, System.Text.Encoding.UTF8);
+
+                AddLog($"✅ 필터링된 데이터 준비 완료: {copied}개 이미지 / {lines.Count}개 레코드");
+                return tempFolder;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"❌ 임시 폴더 생성 실패: {ex.Message}");
+                if (Directory.Exists(tempFolder))
+                    Directory.Delete(tempFolder, true);
+                return null;
+            }
         }
 
         /// <summary>
