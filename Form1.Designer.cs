@@ -1,4 +1,4 @@
-﻿namespace Datagram
+namespace Datagram
 {
     partial class Form1
     {
@@ -57,14 +57,10 @@
             this.cbox2 = new System.Windows.Forms.CheckBox();
             this.btnreset = new System.Windows.Forms.Button();
             this.cbox4 = new System.Windows.Forms.CheckBox();
-            this.btnGraph = new System.Windows.Forms.Button();
-            this.nudEpochs = new System.Windows.Forms.NumericUpDown();
-            this.lblCount = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.gbfilter.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nud1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.nudEpochs)).BeginInit();
             this.SuspendLayout();
             // 
             // txtPath
@@ -105,7 +101,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.picMain.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(24)))), ((int)(((byte)(24)))), ((int)(((byte)(24)))));
             this.picMain.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.picMain.Location = new System.Drawing.Point(9, 68);
+            this.picMain.Location = new System.Drawing.Point(10, 66);
             this.picMain.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.picMain.Name = "picMain";
             this.picMain.Size = new System.Drawing.Size(822, 283);
@@ -463,71 +459,18 @@
             this.cbox4.Text = "정지 및 후진 제외";
             this.cbox4.UseVisualStyleBackColor = true;
             // 
-            // btnGraph
-            // 
-            this.btnGraph.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnGraph.BackColor = System.Drawing.Color.DarkSlateGray;
-            this.btnGraph.FlatAppearance.BorderSize = 0;
-            this.btnGraph.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnGraph.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.btnGraph.ForeColor = System.Drawing.Color.White;
-            this.btnGraph.Location = new System.Drawing.Point(942, 392);
-            this.btnGraph.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
-            this.btnGraph.Name = "btnGraph";
-            this.btnGraph.Size = new System.Drawing.Size(158, 39);
-            this.btnGraph.TabIndex = 12;
-            this.btnGraph.Text = "📈 그래프";
-            this.btnGraph.UseVisualStyleBackColor = false;
-            this.btnGraph.Click += new System.EventHandler(this.BtnGraph_Click);
-            // 
-            // nudEpochs
-            // 
-            this.nudEpochs.Location = new System.Drawing.Point(883, 463);
-            this.nudEpochs.Maximum = new decimal(new int[] {
-            200,
-            0,
-            0,
-            0});
-            this.nudEpochs.Minimum = new decimal(new int[] {
-            1,
-            0,
-            0,
-            0});
-            this.nudEpochs.Name = "nudEpochs";
-            this.nudEpochs.Size = new System.Drawing.Size(43, 21);
-            this.nudEpochs.TabIndex = 20;
-            this.nudEpochs.Value = new decimal(new int[] {
-            30,
-            0,
-            0,
-            0});
-            // 
-            // lblCount
-            // 
-            this.lblCount.AutoSize = true;
-            this.lblCount.Font = new System.Drawing.Font("맑은 고딕", 15F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
-            this.lblCount.ForeColor = System.Drawing.SystemColors.Control;
-            this.lblCount.Location = new System.Drawing.Point(733, 458);
-            this.lblCount.Name = "lblCount";
-            this.lblCount.Size = new System.Drawing.Size(145, 28);
-            this.lblCount.TabIndex = 21;
-            this.lblCount.Text = "AI 학습 횟수 : ";
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.ClientSize = new System.Drawing.Size(1123, 642);
-            this.Controls.Add(this.lblCount);
-            this.Controls.Add(this.nudEpochs);
             this.Controls.Add(this.cbboxspeed);
             this.Controls.Add(this.btntrace);
             this.Controls.Add(this.btnnext);
             this.Controls.Add(this.btnpurse);
             this.Controls.Add(this.btnplay);
             this.Controls.Add(this.txtLog);
-            this.Controls.Add(this.btnGraph);
             this.Controls.Add(this.btnTrain);
             this.Controls.Add(this.btnDelete);
             this.Controls.Add(this.trackFrame);
@@ -550,7 +493,6 @@
             this.gbfilter.ResumeLayout(false);
             this.gbfilter.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.nud1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.nudEpochs)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -587,9 +529,6 @@
         private System.Windows.Forms.Label lbl2;
         private System.Windows.Forms.CheckBox cbox2;
         private System.Windows.Forms.CheckBox cbox4;
-        private System.Windows.Forms.Button btnGraph;
-        private System.Windows.Forms.NumericUpDown nudEpochs;
-        private System.Windows.Forms.Label lblCount;
     }
 }
 
