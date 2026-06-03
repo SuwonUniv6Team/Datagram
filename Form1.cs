@@ -244,6 +244,16 @@ namespace Datagram
             }
         }
 
+        private void BtnGraph_Click(object sender, EventArgs e)
+        {
+            var graphWindow = new GraphWindow();
+            if (!string.IsNullOrWhiteSpace(currentFolder) && frames.Count > 0)
+            {
+                graphWindow.LoadFromFolder(currentFolder, frames);
+            }
+            graphWindow.Show();
+        }
+
         private void BtnTrace_Click(object sender, EventArgs e)
         {
             playbackTimer.Stop();
@@ -1559,6 +1569,8 @@ namespace Datagram
         public double Angle { get; set; }
         public double Throttle { get; set; }
         public string CatalogName { get; set; }  // 카탈로그 이름 (예: catalog_0)
+        public string SourceFile { get; set; }
+        public string SourceLine { get; set; }
 
         public override string ToString()
         {
