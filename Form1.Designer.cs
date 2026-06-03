@@ -1,4 +1,4 @@
-﻿namespace Datagram
+namespace Datagram
 {
     partial class Form1
     {
