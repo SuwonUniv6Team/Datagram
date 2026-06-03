@@ -24,6 +24,10 @@ namespace Datagram
         private bool isPlaybackActive = false;  // 재생 중 플래그
         private GraphWindow _graphWindow;
 
+        // 범위 선택 기능 관련 변수
+        private int rangeStartIndex = -1;
+        private bool isSelectingRangeStart = true;
+
         public Form1()
         {
             InitializeComponent();
@@ -59,6 +63,9 @@ namespace Datagram
             // nud1 (급커브 수치) 초기화 - 소수점 0.1씩 증가/감소
             nud1.Increment = (decimal)0.1;
             nud1.DecimalPlaces = 1;
+
+            // 범위 선택 버튼 이벤트 등록
+            btnRangeSelect.Click += BtnRangeSelect_Click;
         }
 
         private void InitializeSpeedComboBox()
@@ -621,8 +628,8 @@ namespace Datagram
                 "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
-                // 0. 먼저 모든 이미지를 메모리에서 확실하게 해제
-                AddLog("🔓 메모리에서 모든 이미지 해제 중...");
+                // 0. 한 번에 이미지 메모리 해제
+                AddLog("🔓 메모리에서 이미지 해제 중...");
                 try
                 {
                     if (picMain.Image != null)
@@ -630,15 +637,6 @@ namespace Datagram
                         picMain.Image.Dispose();
                         picMain.Image = null;
                     }
-
-                    // 가비지 컬렉션 3회 실행 (확실한 메모리 해제)
-                    for (int i = 0; i < 3; i++)
-                    {
-                        GC.Collect();
-                        GC.WaitForPendingFinalizers();
-                    }
-
-                    System.Threading.Thread.Sleep(200); // 200ms 대기
                     AddLog("✓ 메모리 정리 완료");
                 }
                 catch (Exception ex)
@@ -648,18 +646,16 @@ namespace Datagram
 
                 // 인덱스가 꼬이지 않도록 내림차순 정렬 후 삭제
                 var selectedIndices = lstFrames.SelectedIndices.Cast<int>().OrderByDescending(i => i).ToList();
-                int nextIndex = selectedIndices.Min(); // 삭제할 가장 첫 번째 인덱스 저장
+                int nextIndex = selectedIndices.Min();
 
                 int imageDeletedCount = 0;
-                int recordDeletedCount = 0;
                 int imageDeletionFailedCount = 0;
 
-                // 선택된 프레임 데이터와 이미지 파일 삭제
+                // 1. 이미지 파일 삭제
                 foreach (int idx in selectedIndices)
                 {
                     try
                     {
-                        // 1. 이미지 파일 삭제
                         if (DeleteImageFile(frames[idx]))
                         {
                             imageDeletedCount++;
@@ -668,30 +664,39 @@ namespace Datagram
                         {
                             imageDeletionFailedCount++;
                         }
-
-                        // 2. Catalog/Record 파일에서 데이터 제거
-                        if (DeleteRecordData(frames[idx]))
-                        {
-                            recordDeletedCount++;
-                        }
-
-                        frames.RemoveAt(idx);
                     }
                     catch (Exception ex)
                     {
-                        AddLog($"프레임 {idx} 삭제 실패: {ex.Message}");
+                        AddLog($"이미지 삭제 실패 {idx}: {ex.Message}");
+                        imageDeletionFailedCount++;
                     }
                 }
 
+                // 2. 카탈로그/레코드 파일 배치 처리 (한 번의 파일 I/O로 모든 프레임 처리)
+                int recordDeletedCount = 0;
+                try
+                {
+                    var framesToDelete = selectedIndices.Select(idx => frames[idx]).ToList();
+                    recordDeletedCount = DeleteRecordDataBatch(framesToDelete);
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"⚠ 레코드 파일 처리 오류: {ex.Message}");
+                }
+
+                // 3. frames 리스트에서 삭제
+                foreach (int idx in selectedIndices)
+                {
+                    frames.RemoveAt(idx);
+                }
+
                 // 삭제 결과 메시지
-                string deletedStr = string.Join(", ", selectedIndices);
                 AddLog($"━━━ 프레임 삭제 결과 ━━━");
-                AddLog($"  삭제 인덱스: {deletedStr}");
                 AddLog($"  ✓ 이미지 삭제: {imageDeletedCount}개");
                 if (imageDeletionFailedCount > 0)
                 {
                     AddLog($"  ✗ 이미지 삭제 실패: {imageDeletionFailedCount}개");
-                    AddLog($"  💡 팁: OneDrive 또는 클라우드 동기화 폴더를 사용 중이면 동기화가 완료될 때까지 대기하세요.");
+                    AddLog($"  💡 팁: OneDrive 또는 클라우드 동기화를 사용 중이면 대기하세요.");
                 }
                 AddLog($"  ✓ 레코드 데이터: {recordDeletedCount}개 삭제");
                 AddLog($"━━━━━━━━━━━━━━━━━━");
@@ -708,7 +713,6 @@ namespace Datagram
                 {
                     trackFrame.Maximum = frames.Count - 1;
 
-                    // 다음 프레임 인덱스 보정
                     if (nextIndex >= frames.Count)
                     {
                         nextIndex = frames.Count - 1;
@@ -722,7 +726,6 @@ namespace Datagram
                 }
                 else
                 {
-                    // 데이터가 0개가 된 경우 초기화
                     trackFrame.Maximum = 0;
                     trackFrame.Value = 0;
                     if (picMain.Image != null)
@@ -736,13 +739,13 @@ namespace Datagram
                     prgThrottle.Value = 0;
                 }
 
-                // 원본 데이터도 동기화 (필터 초기화 시 삭제된 프레임이 다시 나타나는 것을 방지)
+                // 원본 데이터도 동기화
                 originalFrames = new List<FrameData>(frames);
             }
         }
 
         /// <summary>
-        /// 이미지 파일 삭제 (강화된 버전 - 여러 번 재시도 포함)
+        /// 이미지 파일 삭제 (최적화 버전)
         /// </summary>
         private bool DeleteImageFile(FrameData frame)
         {
@@ -757,28 +760,8 @@ namespace Datagram
                     return false;
                 }
 
-                AddLog($"🗑️  파일 삭제 시도: {frame.ImagePath}");
-
-                // 메모리에서 이미지 해제 (모든 이미지, 캐시 포함)
-                AddLog($"🔓 메모리에서 이미지 해제 중...");
-                if (picMain.Image != null)
-                {
-                    try
-                    {
-                        picMain.Image.Dispose();
-                        picMain.Image = null;
-                    }
-                    catch { }
-                }
-
-                // 가비지 컬렉션 강제 실행
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
-                System.Threading.Thread.Sleep(100);  // 100ms 대기
-
-                // 파일 삭제 시도 (최대 5회)
-                int maxRetries = 5;
+                // 파일 삭제 시도 (최대 3회, 짧은 대기)
+                int maxRetries = 3;
                 int retryCount = 0;
                 bool deleted = false;
 
@@ -788,7 +771,7 @@ namespace Datagram
                     {
                         File.Delete(imgPath);
                         deleted = true;
-                        AddLog($"✓ 이미지 삭제 성공: {frame.ImagePath}");
+                        AddLog($"✓ 이미지 삭제: {frame.ImagePath}");
                         return true;
                     }
                     catch (IOException ioEx)
@@ -796,8 +779,8 @@ namespace Datagram
                         retryCount++;
                         if (retryCount < maxRetries)
                         {
-                            AddLog($"⚠ 재시도 {retryCount}/{maxRetries-1} - {ioEx.Message}");
-                            System.Threading.Thread.Sleep(300 * retryCount);  // 점진적 대기 (300ms, 600ms, 900ms...)
+                            // 최소 대기만 (50ms * retryCount)
+                            System.Threading.Thread.Sleep(50 * retryCount);
                         }
                         else
                         {
@@ -811,26 +794,260 @@ namespace Datagram
             catch (UnauthorizedAccessException)
             {
                 AddLog($"✗ 파일 접근 권한 없음: {frame.ImagePath}");
-                AddLog($"   경로: {imgPath}");
                 return false;
             }
             catch (IOException ioEx)
             {
-                AddLog($"✗ 파일 잠금 해제 불가: {ioEx.Message}");
-                AddLog($"   경로: {imgPath}");
-                AddLog($"   파일을 다른 프로그램에서 사용 중일 수 있습니다.");
+                AddLog($"✗ 파일 잠금: {Path.GetFileName(frame.ImagePath)}");
                 return false;
             }
             catch (Exception ex)
             {
                 AddLog($"✗ 이미지 삭제 실패: {ex.Message}");
-                AddLog($"   경로: {imgPath}");
                 return false;
             }
         }
 
         /// <summary>
-        /// Catalog/Record 파일에서 프레임 데이터 제거
+        /// 여러 프레임의 레코드 데이터를 배치 처리로 제거 (최적화: 파일 I/O 횟수 최소화)
+        /// </summary>
+        private int DeleteRecordDataBatch(List<FrameData> framesToDelete)
+        {
+            if (framesToDelete == null || framesToDelete.Count == 0)
+                return 0;
+
+            try
+            {
+                // 삭제할 이미지 파일명 집합 (빠른 검색)
+                var imageFileNamesToDelete = new HashSet<string>(
+                    framesToDelete.Select(f => Path.GetFileName(f.ImagePath)),
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+                var imagePathsToDelete = new HashSet<string>(
+                    framesToDelete.Select(f => f.ImagePath),
+                    StringComparer.OrdinalIgnoreCase
+                );
+
+                // Catalog 파일들 한 번에 찾기
+                string[] catalogFiles = Directory.GetFiles(currentFolder, "*catalog*", SearchOption.TopDirectoryOnly);
+                string[] recordFiles = Directory.GetFiles(currentFolder, "record_*.json", SearchOption.TopDirectoryOnly);
+                string[] jsonFiles = Directory.GetFiles(currentFolder, "*.json", SearchOption.TopDirectoryOnly);
+
+                var allFiles = catalogFiles.Concat(recordFiles).Concat(jsonFiles).Distinct().ToArray();
+
+                if (allFiles.Length == 0)
+                    return 0;
+
+                int deletedCount = 0;
+
+                // 각 파일을 한 번만 읽고 쓰기
+                foreach (string filePath in allFiles)
+                {
+                    try
+                    {
+                        if (Path.GetExtension(filePath).ToLower() == ".json")
+                        {
+                            if (DeleteFromJsonFileBatch(filePath, imageFileNamesToDelete, imagePathsToDelete))
+                                deletedCount += framesToDelete.Count;
+                        }
+                        else
+                        {
+                            if (DeleteFromTextFileBatch(filePath, imageFileNamesToDelete, imagePathsToDelete))
+                                deletedCount += framesToDelete.Count;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AddLog($"⚠ 파일 처리 오류 ({Path.GetFileName(filePath)}): {ex.Message}");
+                        continue;
+                    }
+                }
+
+                return deletedCount;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ 배치 처리 오류: {ex.Message}");
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// JSON 파일에서 여러 프레임 배치 삭제 (정확한 경로 매칭)
+        /// </summary>
+        private bool DeleteFromJsonFileBatch(string jsonPath, HashSet<string> imageFileNames, HashSet<string> imagePaths)
+        {
+            try
+            {
+                var lines = File.ReadAllLines(jsonPath);
+                var originalLineCount = lines.Length;
+
+                // 모든 삭제 대상 이미지를 포함한 라인 제거 (정확한 경로 기반)
+                var filteredLines = lines.Where(line =>
+                {
+                    // imagePaths 기준으로 먼저 확인 (더 정확함)
+                    foreach (var imagePath in imagePaths)
+                    {
+                        // JSON 파일에서는 경로가 따옴표로 감싸져 있을 수 있음
+                        // "test/image_001.jpg" 형태로 매칭
+                        if (line.Contains($"\"{imagePath}\"") || 
+                            line.Contains($"'{imagePath}'") ||
+                            (line.Contains(imagePath) && IsValidPathMatch(line, imagePath)))
+                            return false;
+                    }
+
+                    // imageFileNames로 2차 확인 (파일명만)
+                    foreach (var fileName in imageFileNames)
+                    {
+                        // 파일명 경계를 확인하여 부분 매칭 방지
+                        // "test_001.jpg" 검색 시 test_0010.jpg와 구분
+                        if (IsFileNameInLine(line, fileName))
+                            return false;
+                    }
+
+                    return true;
+                }).ToArray();
+
+                if (originalLineCount != filteredLines.Length)
+                {
+                    filteredLines = FixJsonStructure(filteredLines);
+
+                    using (var writer = new StreamWriter(jsonPath, false, Encoding.UTF8, 4096))
+                    {
+                        foreach (var line in filteredLines)
+                        {
+                            writer.WriteLine(line);
+                        }
+                    }
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ JSON 배치 삭제 오류: {Path.GetFileName(jsonPath)}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 텍스트 파일에서 여러 프레임 배치 삭제 (정확한 경로 매칭)
+        /// </summary>
+        private bool DeleteFromTextFileBatch(string catalogPath, HashSet<string> imageFileNames, HashSet<string> imagePaths)
+        {
+            try
+            {
+                var lines = File.ReadAllLines(catalogPath);
+                var originalLineCount = lines.Length;
+
+                // 모든 삭제 대상 이미지를 포함한 라인 제거 (정확한 경로 기반)
+                var filteredLines = lines.Where(line =>
+                {
+                    // imagePaths 기준으로 먼저 확인 (더 정확함)
+                    foreach (var imagePath in imagePaths)
+                    {
+                        if (line.Contains(imagePath) && IsValidPathMatch(line, imagePath))
+                            return false;
+                    }
+
+                    // imageFileNames로 2차 확인 (파일명만)
+                    foreach (var fileName in imageFileNames)
+                    {
+                        // 파일명 경계를 확인하여 부분 매칭 방지
+                        if (IsFileNameInLine(line, fileName))
+                            return false;
+                    }
+
+                    return true;
+                }).ToArray();
+
+                if (originalLineCount != filteredLines.Length)
+                {
+                    using (var writer = new StreamWriter(catalogPath, false, Encoding.UTF8, 4096))
+                    {
+                        foreach (var line in filteredLines)
+                        {
+                            writer.WriteLine(line);
+                        }
+                    }
+                    return true;
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AddLog($"✗ 텍스트 배치 삭제 오류: {Path.GetFileName(catalogPath)}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 경로가 라인에 올바르게 포함되었는지 확인 (경계 검사)
+        /// 예: "test_001.jpg"는 "test_0010.jpg"와 구분
+        /// </summary>
+        private bool IsValidPathMatch(string line, string imagePath)
+        {
+            // 경로의 시작과 끝에서 경계 문자 확인
+            // JSON, 공백, 콤마, 따옴표 등으로 구분되어야 함
+            int index = line.IndexOf(imagePath, StringComparison.OrdinalIgnoreCase);
+            if (index < 0) return false;
+
+            // 시작 경계 확인
+            if (index > 0)
+            {
+                char prevChar = line[index - 1];
+                // 파일명이 경계 문자로 시작되지 않으면 부분 매칭
+                if (char.IsLetterOrDigit(prevChar) && prevChar != '\\' && prevChar != '/')
+                    return false;
+            }
+
+            // 끝 경계 확인
+            int endIndex = index + imagePath.Length;
+            if (endIndex < line.Length)
+            {
+                char nextChar = line[endIndex];
+                // 파일명이 경계 문자로 끝나지 않으면 부분 매칭
+                if (char.IsLetterOrDigit(nextChar) && nextChar != '\\' && nextChar != '/')
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 파일명이 라인에 올바르게 포함되었는지 확인 (파일명 경계 검사)
+        /// </summary>
+        private bool IsFileNameInLine(string line, string fileName)
+        {
+            int index = line.IndexOf(fileName, StringComparison.OrdinalIgnoreCase);
+            if (index < 0) return false;
+
+            // 파일명 앞에 있는 문자 확인 (경계)
+            if (index > 0)
+            {
+                char prevChar = line[index - 1];
+                // 파일명 확장자 부분에서 겹칠 수 있으므로 엄격하게 검사
+                if (char.IsLetterOrDigit(prevChar) || prevChar == '_' || prevChar == '-' || prevChar == '.')
+                    return false;
+            }
+
+            // 파일명 뒤에 있는 문자 확인 (경계)
+            int endIndex = index + fileName.Length;
+            if (endIndex < line.Length)
+            {
+                char nextChar = line[endIndex];
+                if (char.IsLetterOrDigit(nextChar) || nextChar == '_' || nextChar == '-' || nextChar == '.')
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Catalog/Record 파일에서 프레임 데이터 제거 (단일 파일용 - 호환성 유지)
         /// </summary>
         private bool DeleteRecordData(FrameData frame)
         {
@@ -895,26 +1112,15 @@ namespace Datagram
         }
 
         /// <summary>
-        /// JSON 파일에서 프레임 데이터 제거
+        /// JSON 파일에서 프레임 데이터 제거 (최적화: 한 번의 파일 읽기)
         /// </summary>
         private bool DeleteFromJsonFile(string jsonPath, FrameData frame)
         {
             try
             {
-                string content = File.ReadAllText(jsonPath);
                 string imageFileName = Path.GetFileName(frame.ImagePath);
 
-                AddLog($"📄 JSON 파일 검사: {Path.GetFileName(jsonPath)}");
-                AddLog($"   찾는 이미지: {imageFileName}");
-
-                // JSON 파일 내용에서 이미지 경로 찾기
-                if (!content.Contains(imageFileName))
-                {
-                    AddLog($"   ⓘ 해당 이미지를 찾을 수 없음");
-                    return false;
-                }
-
-                // 라인 단위로 필터링
+                // 라인 단위로 한 번에 읽고 필터링
                 var lines = File.ReadAllLines(jsonPath);
                 var originalLineCount = lines.Length;
 
@@ -926,8 +1132,15 @@ namespace Datagram
                     // JSON 구조 보정 (쉼표 처리)
                     filteredLines = FixJsonStructure(filteredLines);
 
-                    File.WriteAllLines(jsonPath, filteredLines, Encoding.UTF8);
-                    AddLog($"✓ JSON에서 {originalLineCount - filteredLines.Length}개 라인 제거");
+                    // 스트리밍 방식으로 파일 쓰기 (메모리 효율화)
+                    using (var writer = new StreamWriter(jsonPath, false, Encoding.UTF8, 4096))
+                    {
+                        foreach (var line in filteredLines)
+                        {
+                            writer.WriteLine(line);
+                        }
+                    }
+
                     return true;
                 }
 
@@ -935,7 +1148,7 @@ namespace Datagram
             }
             catch (Exception ex)
             {
-                AddLog($"✗ JSON 파일 처리 오류: {ex.Message}");
+                AddLog($"✗ JSON 파일 처리 오류: {Path.GetFileName(jsonPath)}");
                 return false;
             }
         }
@@ -972,16 +1185,13 @@ namespace Datagram
         }
 
         /// <summary>
-        /// 텍스트 형식 Catalog 파일에서 프레임 데이터 제거
+        /// 텍스트 형식 Catalog 파일에서 프레임 데이터 제거 (최적화)
         /// </summary>
         private bool DeleteFromTextFile(string catalogPath, FrameData frame)
         {
             try
             {
                 string imageFileName = Path.GetFileName(frame.ImagePath);
-
-                AddLog($"📄 텍스트 파일 검사: {Path.GetFileName(catalogPath)}");
-                AddLog($"   찾는 이미지: {imageFileName}");
 
                 string[] lines = File.ReadAllLines(catalogPath);
                 var originalLineCount = lines.Length;
@@ -994,23 +1204,26 @@ namespace Datagram
 
                 if (originalLineCount != filteredLines.Length)
                 {
-                    File.WriteAllLines(catalogPath, filteredLines, Encoding.UTF8);
-                    AddLog($"✓ 텍스트에서 {originalLineCount - filteredLines.Length}개 라인 제거");
+                    // 스트리밍 방식으로 파일 쓰기
+                    using (var writer = new StreamWriter(catalogPath, false, Encoding.UTF8, 4096))
+                    {
+                        foreach (var line in filteredLines)
+                        {
+                            writer.WriteLine(line);
+                        }
+                    }
                     return true;
-                }
-                else
-                {
-                    AddLog($"   ⓘ 해당 이미지를 찾을 수 없음");
                 }
 
                 return false;
             }
             catch (Exception ex)
             {
-                AddLog($"✗ 텍스트 파일 처리 오류: {ex.Message}");
+                AddLog($"✗ 텍스트 파일 처리 오류: {Path.GetFileName(catalogPath)}");
                 return false;
             }
         }
+
 
         private void BtnLoad_Click(object sender, EventArgs e)
         {
@@ -1337,6 +1550,108 @@ namespace Datagram
         private void checkBox4_CheckedChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void lblCount_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// 범위 선택 버튼 클릭 이벤트
+        /// 첫 클릭: 시작 프레임 저장
+        /// 두 번째 클릭: 범위 내 프레임 모두 선택
+        /// </summary>
+        private void BtnRangeSelect_Click(object sender, EventArgs e)
+        {
+            if (lstFrames.SelectedIndex < 0)
+            {
+                MessageBox.Show("먼저 프레임을 선택해주세요.", "알림");
+                return;
+            }
+
+            if (isSelectingRangeStart)
+            {
+                // 첫 번째 클릭: 시작 프레임 저장
+                rangeStartIndex = lstFrames.SelectedIndex;
+                btnRangeSelect.Text = "끝점 선택";
+                isSelectingRangeStart = false;
+                AddLog($"📍 범위 선택 시작: {rangeStartIndex}번 프레임");
+            }
+            else
+            {
+                // 두 번째 클릭: 범위 선택 완료
+                int rangeEndIndex = lstFrames.SelectedIndex;
+
+                // 시작과 끝을 올바른 순서로 정렬
+                int minIndex = Math.Min(rangeStartIndex, rangeEndIndex);
+                int maxIndex = Math.Max(rangeStartIndex, rangeEndIndex);
+
+                // 범위 내 모든 항목 선택
+                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+                lstFrames.ClearSelected();
+
+                for (int i = minIndex; i <= maxIndex; i++)
+                {
+                    lstFrames.SetSelected(i, true);
+                }
+
+                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+
+                // UI 업데이트
+                UpdateRangeSelectionUI(minIndex, maxIndex);
+
+                // 범위 내 첫 항목으로 스크롤
+                lstFrames.TopIndex = minIndex;
+
+                // 버튼 텍스트 복구 및 상태 초기화
+                btnRangeSelect.Text = "범위 선택";
+                isSelectingRangeStart = true;
+                rangeStartIndex = -1;
+
+                AddLog($"✓ 범위 선택 완료: {minIndex}~{maxIndex}번 프레임 ({maxIndex - minIndex + 1}개)");
+            }
+        }
+
+        /// <summary>
+        /// 범위 선택 UI 업데이트
+        /// 선택된 개수, 시작/끝 프레임 번호, 라벨 텍스트 업데이트
+        /// </summary>
+        private void UpdateRangeSelectionUI(int startIndex, int endIndex)
+        {
+            try
+            {
+                int selectedCount = endIndex - startIndex + 1;
+
+                // 선택된 개수 표시 (lblRangeCount)
+                if (lblRangeCount != null)
+                {
+                    lblRangeCount.Text = $"/ {selectedCount}개";
+                }
+
+                // 시작 프레임 번호 표시 (6자리 형식, txtRangeStart)
+                if (txtRangeStart != null)
+                {
+                    txtRangeStart.Text = startIndex.ToString("D6");
+                }
+
+                // 끝 프레임 번호 표시 (6자리 형식, txtRangeEnd)
+                if (txtRangeEnd != null)
+                {
+                    txtRangeEnd.Text = endIndex.ToString("D6");
+                }
+
+                AddLog($"📊 범위 정보: 시작={startIndex:D6}, 끝={endIndex:D6}, 개수={selectedCount}개");
+            }
+            catch (Exception ex)
+            {
+                AddLog($"⚠ 범위 선택 UI 업데이트 오류: {ex.Message}");
+            }
         }
     }
 

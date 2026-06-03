@@ -60,6 +60,13 @@
             this.btnGraph = new System.Windows.Forms.Button();
             this.nudEpochs = new System.Windows.Forms.NumericUpDown();
             this.lblCount = new System.Windows.Forms.Label();
+            this.btnRangeSelect = new System.Windows.Forms.Button();
+            this.lblRangeTitle = new System.Windows.Forms.Label();
+            this.txtRangeStart = new System.Windows.Forms.TextBox();
+            this.txtRangeEnd = new System.Windows.Forms.TextBox();
+            this.lblRangeWave = new System.Windows.Forms.Label();
+            this.lblRangeCount = new System.Windows.Forms.Label();
+            this.lblexplain = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.gbfilter.SuspendLayout();
@@ -79,7 +86,7 @@
             this.txtPath.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtPath.Name = "txtPath";
             this.txtPath.ReadOnly = true;
-            this.txtPath.Size = new System.Drawing.Size(707, 27);
+            this.txtPath.Size = new System.Drawing.Size(882, 27);
             this.txtPath.TabIndex = 0;
             // 
             // btnLoad
@@ -90,7 +97,7 @@
             this.btnLoad.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnLoad.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnLoad.ForeColor = System.Drawing.Color.White;
-            this.btnLoad.Location = new System.Drawing.Point(893, 10);
+            this.btnLoad.Location = new System.Drawing.Point(1068, 10);
             this.btnLoad.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnLoad.Name = "btnLoad";
             this.btnLoad.Size = new System.Drawing.Size(102, 50);
@@ -108,7 +115,7 @@
             this.picMain.Location = new System.Drawing.Point(9, 68);
             this.picMain.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.picMain.Name = "picMain";
-            this.picMain.Size = new System.Drawing.Size(822, 283);
+            this.picMain.Size = new System.Drawing.Size(997, 283);
             this.picMain.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
             this.picMain.TabIndex = 2;
             this.picMain.TabStop = false;
@@ -118,7 +125,7 @@
             this.prgAngle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.prgAngle.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.prgAngle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(200)))), ((int)(((byte)(100)))));
-            this.prgAngle.Location = new System.Drawing.Point(893, 81);
+            this.prgAngle.Location = new System.Drawing.Point(1068, 81);
             this.prgAngle.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.prgAngle.Name = "prgAngle";
             this.prgAngle.Size = new System.Drawing.Size(219, 34);
@@ -129,7 +136,7 @@
             this.prgThrottle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.prgThrottle.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.prgThrottle.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(100)))), ((int)(((byte)(150)))), ((int)(((byte)(255)))));
-            this.prgThrottle.Location = new System.Drawing.Point(893, 135);
+            this.prgThrottle.Location = new System.Drawing.Point(1068, 135);
             this.prgThrottle.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.prgThrottle.Name = "prgThrottle";
             this.prgThrottle.Size = new System.Drawing.Size(219, 33);
@@ -152,7 +159,7 @@
             this.lblAngleName.AutoSize = true;
             this.lblAngleName.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblAngleName.ForeColor = System.Drawing.Color.LightGray;
-            this.lblAngleName.Location = new System.Drawing.Point(837, 92);
+            this.lblAngleName.Location = new System.Drawing.Point(1012, 92);
             this.lblAngleName.Name = "lblAngleName";
             this.lblAngleName.Size = new System.Drawing.Size(41, 15);
             this.lblAngleName.TabIndex = 6;
@@ -164,7 +171,7 @@
             this.lblThrottleName.AutoSize = true;
             this.lblThrottleName.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.lblThrottleName.ForeColor = System.Drawing.Color.LightGray;
-            this.lblThrottleName.Location = new System.Drawing.Point(837, 148);
+            this.lblThrottleName.Location = new System.Drawing.Point(1012, 148);
             this.lblThrottleName.Name = "lblThrottleName";
             this.lblThrottleName.Size = new System.Drawing.Size(52, 15);
             this.lblThrottleName.TabIndex = 7;
@@ -179,7 +186,7 @@
             this.lstFrames.ForeColor = System.Drawing.Color.White;
             this.lstFrames.FormattingEnabled = true;
             this.lstFrames.ItemHeight = 14;
-            this.lstFrames.Location = new System.Drawing.Point(840, 186);
+            this.lstFrames.Location = new System.Drawing.Point(1015, 186);
             this.lstFrames.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.lstFrames.Name = "lstFrames";
             this.lstFrames.Size = new System.Drawing.Size(273, 158);
@@ -192,7 +199,7 @@
             this.trackFrame.Location = new System.Drawing.Point(442, 355);
             this.trackFrame.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.trackFrame.Name = "trackFrame";
-            this.trackFrame.Size = new System.Drawing.Size(669, 45);
+            this.trackFrame.Size = new System.Drawing.Size(844, 45);
             this.trackFrame.TabIndex = 9;
             // 
             // btnFilter
@@ -219,7 +226,7 @@
             this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDelete.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnDelete.ForeColor = System.Drawing.Color.White;
-            this.btnDelete.Location = new System.Drawing.Point(454, 445);
+            this.btnDelete.Location = new System.Drawing.Point(450, 445);
             this.btnDelete.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnDelete.Name = "btnDelete";
             this.btnDelete.Size = new System.Drawing.Size(125, 48);
@@ -235,7 +242,7 @@
             this.btnTrain.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnTrain.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnTrain.ForeColor = System.Drawing.Color.White;
-            this.btnTrain.Location = new System.Drawing.Point(942, 445);
+            this.btnTrain.Location = new System.Drawing.Point(1117, 445);
             this.btnTrain.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnTrain.Name = "btnTrain";
             this.btnTrain.Size = new System.Drawing.Size(158, 48);
@@ -252,7 +259,7 @@
             this.txtLog.Location = new System.Drawing.Point(0, 517);
             this.txtLog.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.txtLog.Name = "txtLog";
-            this.txtLog.Size = new System.Drawing.Size(1123, 125);
+            this.txtLog.Size = new System.Drawing.Size(1298, 125);
             this.txtLog.TabIndex = 13;
             this.txtLog.Text = "";
             // 
@@ -471,7 +478,7 @@
             this.btnGraph.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnGraph.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnGraph.ForeColor = System.Drawing.Color.White;
-            this.btnGraph.Location = new System.Drawing.Point(942, 392);
+            this.btnGraph.Location = new System.Drawing.Point(1117, 392);
             this.btnGraph.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnGraph.Name = "btnGraph";
             this.btnGraph.Size = new System.Drawing.Size(158, 39);
@@ -482,7 +489,8 @@
             // 
             // nudEpochs
             // 
-            this.nudEpochs.Location = new System.Drawing.Point(883, 463);
+            this.nudEpochs.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.nudEpochs.Location = new System.Drawing.Point(1063, 457);
             this.nudEpochs.Maximum = new decimal(new int[] {
             200,
             0,
@@ -504,21 +512,125 @@
             // 
             // lblCount
             // 
+            this.lblCount.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.lblCount.AutoSize = true;
             this.lblCount.Font = new System.Drawing.Font("맑은 고딕", 15F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(129)));
             this.lblCount.ForeColor = System.Drawing.SystemColors.Control;
-            this.lblCount.Location = new System.Drawing.Point(733, 458);
+            this.lblCount.Location = new System.Drawing.Point(916, 449);
             this.lblCount.Name = "lblCount";
             this.lblCount.Size = new System.Drawing.Size(145, 28);
             this.lblCount.TabIndex = 21;
             this.lblCount.Text = "AI 학습 횟수 : ";
+            this.lblCount.Click += new System.EventHandler(this.lblCount_Click);
+            // 
+            // btnRangeSelect
+            // 
+            this.btnRangeSelect.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.btnRangeSelect.BackColor = System.Drawing.Color.Teal;
+            this.btnRangeSelect.FlatAppearance.BorderSize = 0;
+            this.btnRangeSelect.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnRangeSelect.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnRangeSelect.ForeColor = System.Drawing.Color.White;
+            this.btnRangeSelect.Location = new System.Drawing.Point(584, 445);
+            this.btnRangeSelect.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.btnRangeSelect.Name = "btnRangeSelect";
+            this.btnRangeSelect.Size = new System.Drawing.Size(85, 48);
+            this.btnRangeSelect.TabIndex = 22;
+            this.btnRangeSelect.Text = "범위 선택";
+            this.btnRangeSelect.UseVisualStyleBackColor = false;
+            // 
+            // lblRangeTitle
+            // 
+            this.lblRangeTitle.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.lblRangeTitle.AutoSize = true;
+            this.lblRangeTitle.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblRangeTitle.ForeColor = System.Drawing.Color.White;
+            this.lblRangeTitle.Location = new System.Drawing.Point(672, 455);
+            this.lblRangeTitle.Name = "lblRangeTitle";
+            this.lblRangeTitle.Size = new System.Drawing.Size(46, 20);
+            this.lblRangeTitle.TabIndex = 23;
+            this.lblRangeTitle.Text = "범위: ";
+            // 
+            // txtRangeStart
+            // 
+            this.txtRangeStart.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.txtRangeStart.BackColor = System.Drawing.Color.Black;
+            this.txtRangeStart.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtRangeStart.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtRangeStart.ForeColor = System.Drawing.Color.White;
+            this.txtRangeStart.Location = new System.Drawing.Point(714, 452);
+            this.txtRangeStart.Name = "txtRangeStart";
+            this.txtRangeStart.ReadOnly = true;
+            this.txtRangeStart.Size = new System.Drawing.Size(58, 27);
+            this.txtRangeStart.TabIndex = 24;
+            this.txtRangeStart.Text = "------";
+            this.txtRangeStart.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.txtRangeStart.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
+            // 
+            // txtRangeEnd
+            // 
+            this.txtRangeEnd.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.txtRangeEnd.BackColor = System.Drawing.Color.Black;
+            this.txtRangeEnd.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.txtRangeEnd.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtRangeEnd.ForeColor = System.Drawing.Color.White;
+            this.txtRangeEnd.Location = new System.Drawing.Point(793, 452);
+            this.txtRangeEnd.Name = "txtRangeEnd";
+            this.txtRangeEnd.ReadOnly = true;
+            this.txtRangeEnd.Size = new System.Drawing.Size(58, 27);
+            this.txtRangeEnd.TabIndex = 25;
+            this.txtRangeEnd.Text = "------";
+            this.txtRangeEnd.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            // 
+            // lblRangeWave
+            // 
+            this.lblRangeWave.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.lblRangeWave.AutoSize = true;
+            this.lblRangeWave.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblRangeWave.ForeColor = System.Drawing.Color.White;
+            this.lblRangeWave.Location = new System.Drawing.Point(773, 455);
+            this.lblRangeWave.Name = "lblRangeWave";
+            this.lblRangeWave.Size = new System.Drawing.Size(19, 20);
+            this.lblRangeWave.TabIndex = 26;
+            this.lblRangeWave.Text = "~";
+            // 
+            // lblRangeCount
+            // 
+            this.lblRangeCount.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.lblRangeCount.AutoSize = true;
+            this.lblRangeCount.Font = new System.Drawing.Font("Segoe UI", 11.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblRangeCount.ForeColor = System.Drawing.Color.White;
+            this.lblRangeCount.Location = new System.Drawing.Point(854, 455);
+            this.lblRangeCount.Name = "lblRangeCount";
+            this.lblRangeCount.Size = new System.Drawing.Size(42, 20);
+            this.lblRangeCount.TabIndex = 27;
+            this.lblRangeCount.Text = "/ 0개";
+            // 
+            // lblexplain
+            // 
+            this.lblexplain.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.lblexplain.AutoSize = true;
+            this.lblexplain.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblexplain.ForeColor = System.Drawing.Color.Yellow;
+            this.lblexplain.Location = new System.Drawing.Point(672, 485);
+            this.lblexplain.Name = "lblexplain";
+            this.lblexplain.Size = new System.Drawing.Size(314, 15);
+            this.lblexplain.TabIndex = 28;
+            this.lblexplain.Text = "(범위 선택 버튼을 클릭하여 시작/끝 프레임을 지정하세요)";
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
-            this.ClientSize = new System.Drawing.Size(1123, 642);
+            this.ClientSize = new System.Drawing.Size(1298, 642);
+            this.Controls.Add(this.lblexplain);
+            this.Controls.Add(this.lblRangeCount);
+            this.Controls.Add(this.lblRangeWave);
+            this.Controls.Add(this.txtRangeEnd);
+            this.Controls.Add(this.txtRangeStart);
+            this.Controls.Add(this.lblRangeTitle);
+            this.Controls.Add(this.btnRangeSelect);
             this.Controls.Add(this.lblCount);
             this.Controls.Add(this.nudEpochs);
             this.Controls.Add(this.cbboxspeed);
@@ -590,6 +702,13 @@
         private System.Windows.Forms.Button btnGraph;
         private System.Windows.Forms.NumericUpDown nudEpochs;
         private System.Windows.Forms.Label lblCount;
+        private System.Windows.Forms.Button btnRangeSelect;
+        private System.Windows.Forms.Label lblRangeTitle;
+        private System.Windows.Forms.TextBox txtRangeStart;
+        private System.Windows.Forms.TextBox txtRangeEnd;
+        private System.Windows.Forms.Label lblRangeWave;
+        private System.Windows.Forms.Label lblRangeCount;
+        private System.Windows.Forms.Label lblexplain;
     }
 }
 
