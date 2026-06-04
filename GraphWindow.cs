@@ -36,6 +36,9 @@ namespace Datagram
 
         private Dictionary<string, List<FrameData>> _catalogData = new Dictionary<string, List<FrameData>>();
 
+        // 학습 로그
+        private RichTextBox  rtbLog;
+
         public GraphWindow()
         {
             InitUI();
@@ -216,11 +219,91 @@ namespace Datagram
 
             infoPanel.Controls.AddRange(new Control[] { lblEpochInfo, lblBestVal, lblScore });
 
+            // ── 좌우 분할 패널 (그래프 + 로그) ──
+            SplitContainer splitMain = new SplitContainer();
+            splitMain.Dock          = DockStyle.Fill;
+            splitMain.Orientation   = Orientation.Vertical;
+            splitMain.BackColor     = Color.FromArgb(25, 25, 25);
+            splitMain.BorderStyle   = BorderStyle.None;
+            splitMain.SplitterWidth = 4;
+            // MinSize는 작게 잡아 충돌 방지
+            splitMain.Panel1MinSize = 50;
+            splitMain.Panel2MinSize = 50;
+            // 핸들 생성 후 SplitterDistance 안전하게 설정
+            splitMain.HandleCreated += (s, ev) =>
+            {
+                try
+                {
+                    int target = splitMain.Width - 250;
+                    if (target < 50) target = splitMain.Width / 2;
+                    splitMain.SplitterDistance = target;
+                }
+                catch { }
+            };
+
             trainGraph = new TrainGraphPanel
             {
                 Dock      = DockStyle.Fill,
                 BackColor = Color.FromArgb(18, 18, 18)
             };
+            splitMain.Panel1.Controls.Add(trainGraph);
+
+            // 오른쪽 로그 패널
+            Panel logPanel = new Panel
+            {
+                Dock      = DockStyle.Fill,
+                BackColor = Color.FromArgb(18, 18, 18)
+            };
+
+            Panel logToolbar = new Panel
+            {
+                Dock      = DockStyle.Top,
+                Height    = 32,
+                BackColor = Color.FromArgb(35, 35, 35),
+                Padding   = new Padding(6, 4, 6, 4)
+            };
+
+            Label lblLogTitle = new Label
+            {
+                Text      = "📋 학습 로그",
+                Location  = new Point(6, 7),
+                AutoSize  = true,
+                ForeColor = Color.FromArgb(180, 180, 180),
+                Font      = new Font("Segoe UI", 9f, FontStyle.Bold)
+            };
+
+            Button btnClearLog = new Button
+            {
+                Text      = "지우기",
+                Anchor    = AnchorStyles.Top | AnchorStyles.Right,
+                Size      = new Size(52, 22),
+                BackColor = Color.FromArgb(60, 60, 60),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font      = new Font("Segoe UI", 8f)
+            };
+            btnClearLog.FlatAppearance.BorderSize = 0;
+            btnClearLog.Location = new Point(logToolbar.Width - 58, 4);
+            btnClearLog.Anchor   = AnchorStyles.Top | AnchorStyles.Right;
+            btnClearLog.Click   += (s, e) => { if (rtbLog != null) rtbLog.Clear(); };
+
+            logToolbar.Controls.Add(lblLogTitle);
+            logToolbar.Controls.Add(btnClearLog);
+
+            rtbLog = new RichTextBox
+            {
+                Dock        = DockStyle.Fill,
+                BackColor   = Color.FromArgb(12, 12, 12),
+                ForeColor   = Color.FromArgb(180, 255, 180),
+                Font        = new Font("Consolas", 8.5f),
+                ReadOnly    = true,
+                ScrollBars  = RichTextBoxScrollBars.Vertical,
+                BorderStyle = BorderStyle.None
+            };
+
+            logPanel.Controls.Add(rtbLog);
+            logPanel.Controls.Add(logToolbar);
+            splitMain.Panel2.Controls.Add(logPanel);
 
             // ── 하단 설명 패널 ──
             Panel descPanel = new Panel
@@ -261,7 +344,7 @@ namespace Datagram
 
             descPanel.Controls.Add(descInner);
 
-            page.Controls.Add(trainGraph);
+            page.Controls.Add(splitMain);
             page.Controls.Add(descPanel);
             page.Controls.Add(infoPanel);
         }
@@ -327,6 +410,52 @@ namespace Datagram
 
             lblScore.Text      = $"{grade}  {score:F1}점";
             lblScore.ForeColor = scoreColor;
+        }
+
+        // 외부(Form1)에서 로그 추가
+        public void AppendRawLog(string line)
+        {
+            if (this.IsDisposed || rtbLog == null) return;
+
+            Action doAppend = () =>
+            {
+                Color color;
+                if      (line.StartsWith("[LOG]"))      color = Color.FromArgb(180, 255, 180);
+                else if (line.StartsWith("[PROGRESS]")) color = Color.FromArgb(80,  200, 255);
+                else if (line.StartsWith("[DONE]"))     color = Color.FromArgb(100, 255, 150);
+                else if (line.StartsWith("[ERROR]") || line.StartsWith("[STDERR]"))
+                                                         color = Color.FromArgb(255, 100, 100);
+                else                                     color = Color.FromArgb(160, 160, 160);
+
+                rtbLog.SelectionStart  = rtbLog.TextLength;
+                rtbLog.SelectionLength = 0;
+                rtbLog.SelectionColor  = color;
+                rtbLog.AppendText(line + Environment.NewLine);
+                rtbLog.SelectionStart = rtbLog.TextLength;
+                rtbLog.ScrollToCaret();
+            };
+
+            // 이미 UI 스레드면 바로 실행, 아니면 Invoke
+            if (rtbLog.InvokeRequired)
+                rtbLog.Invoke(doAppend);
+            else
+                doAppend();
+        }
+
+        // 학습 시작 시 로그 초기화 및 탭 전환
+        public void StartLogSession()
+        {
+            if (this.IsDisposed || rtbLog == null) return;
+            Action doStart = () =>
+            {
+                rtbLog.Clear();
+                tabControl.SelectedTab = tabTrain;
+            };
+
+            if (rtbLog.InvokeRequired)
+                rtbLog.Invoke(doStart);
+            else
+                doStart();
         }
 
         private Label MakeLabel(string text, int x, int y)

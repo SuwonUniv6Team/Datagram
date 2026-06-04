@@ -145,7 +145,22 @@ def build_donkey_model(input_shape=(120, 160, 3)):
 class ProgressCallback(callbacks.Callback):
     def __init__(self, total):
         super().__init__()
-        self.total = total
+        self.total = total          # 전체 epoch 수
+        self.cur_epoch = 0          # 현재 epoch
+        self.total_batches = 0      # epoch당 배치 수
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.cur_epoch = epoch + 1
+        self.total_batches = self.params.get("steps") or 0
+
+    def on_train_batch_end(self, batch, logs=None):
+        logs = logs or {}
+        b = batch + 1
+        # 10배치마다 + 마지막 배치에 진행 상황 출력
+        if self.total_batches and (b % 10 == 0 or b == self.total_batches):
+            print(f"[BATCH] epoch={self.cur_epoch}/{self.total} "
+                  f"batch={b}/{self.total_batches} "
+                  f"loss={logs.get('loss', 0):.4f}", flush=True)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}

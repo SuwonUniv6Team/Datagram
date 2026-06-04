@@ -68,6 +68,7 @@
             this.lblRangeCount = new System.Windows.Forms.Label();
             this.lblexplain = new System.Windows.Forms.Label();
             this.BtnRestore = new System.Windows.Forms.Button();
+            this.btnAIreview = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.gbfilter.SuspendLayout();
@@ -479,10 +480,10 @@
             this.btnGraph.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnGraph.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnGraph.ForeColor = System.Drawing.Color.White;
-            this.btnGraph.Location = new System.Drawing.Point(1117, 392);
+            this.btnGraph.Location = new System.Drawing.Point(948, 391);
             this.btnGraph.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnGraph.Name = "btnGraph";
-            this.btnGraph.Size = new System.Drawing.Size(158, 39);
+            this.btnGraph.Size = new System.Drawing.Size(158, 40);
             this.btnGraph.TabIndex = 12;
             this.btnGraph.Text = "📈 그래프";
             this.btnGraph.UseVisualStyleBackColor = false;
@@ -636,6 +637,23 @@
             this.BtnRestore.UseVisualStyleBackColor = false;
             this.BtnRestore.Click += new System.EventHandler(this.BtnRestore_Click);
             // 
+            // btnAIreview
+            // 
+            this.btnAIreview.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnAIreview.BackColor = System.Drawing.Color.Indigo;
+            this.btnAIreview.FlatAppearance.BorderSize = 0;
+            this.btnAIreview.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnAIreview.Font = new System.Drawing.Font("Segoe UI", 13.8F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnAIreview.ForeColor = System.Drawing.Color.White;
+            this.btnAIreview.Location = new System.Drawing.Point(1117, 391);
+            this.btnAIreview.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.btnAIreview.Name = "btnAIreview";
+            this.btnAIreview.Size = new System.Drawing.Size(158, 40);
+            this.btnAIreview.TabIndex = 12;
+            this.btnAIreview.Text = "AI 학습 검증";
+            this.btnAIreview.UseVisualStyleBackColor = false;
+            this.btnAIreview.Click += new System.EventHandler(this.BtnGraph_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
@@ -657,6 +675,7 @@
             this.Controls.Add(this.btnpurse);
             this.Controls.Add(this.btnplay);
             this.Controls.Add(this.txtLog);
+            this.Controls.Add(this.btnAIreview);
             this.Controls.Add(this.btnGraph);
             this.Controls.Add(this.btnTrain);
             this.Controls.Add(this.BtnRestore);
@@ -729,6 +748,7 @@
         private System.Windows.Forms.Label lblRangeCount;
         private System.Windows.Forms.Label lblexplain;
         private System.Windows.Forms.Button BtnRestore;
+        private System.Windows.Forms.Button btnAIreview;
     }
 }
 

@@ -23,6 +23,10 @@ namespace Datagram
         private bool isUserInteracting = false;
         private bool isPlaybackActive = false;  // 재생 중 플래그
         private GraphWindow _graphWindow;
+        private double _currentAngle = 0.0;
+        private string _currentImageName = null;
+        private Dictionary<string, double> _predictions = new Dictionary<string, double>();
+        private string _loadedModelPath = null;
         private Process _trainProcess;
         private bool _isTraining = false;
 
@@ -46,6 +50,9 @@ namespace Datagram
             btnFilter.Click += BtnFilter_Click;
             btnDelete.Click += BtnDelete_Click;
             btnTrain.Click += BtnTrain_Click;
+            picMain.Paint += PicMain_Paint;
+            btnAIreview.Click += BtnAIReview_Click;
+            btnAIreview.Text = "AI 검증";
             btnGraph.Click += BtnGraph_Click;
 
             // 다중 선택 모드 활성화 (Ctrl/Shift + 클릭으로 다중 선택 가능)
@@ -223,7 +230,9 @@ namespace Datagram
 
                 Invoke(new Action(() =>
                 {
-                    // [PROGRESS] 는 한글로 변환해서 출력
+                    bool appended = false;   // 메인 로그창에 실제로 출력했는지 (스크롤 흔들림 방지)
+
+                    // [PROGRESS] 는 epoch(회차) 결과 → 한글로 변환 + 그래프 업데이트
                     if (line.StartsWith("[PROGRESS]"))
                     {
                         try
@@ -253,6 +262,7 @@ namespace Datagram
 
                             // 한글로 출력
                             txtLog.AppendText($"[학습 {epoch}/{totalEpochs}회] 학습오차: {loss:F4}  검증오차: {valLoss:F4}{Environment.NewLine}");
+                            appended = true;
 
                             // 그래프 창 업데이트
                             if (_graphWindow != null && !_graphWindow.IsDisposed)
@@ -261,50 +271,46 @@ namespace Datagram
                         catch
                         {
                             txtLog.AppendText(line + Environment.NewLine);
+                            appended = true;
                         }
                     }
                     else if (line.StartsWith("[DONE]"))
                     {
-                        txtLog.AppendText($"✅ 학습 완료! 모델 저장: {line.Substring("[DONE]".Length).Trim()}{Environment.NewLine}");
+                        txtLog.AppendText($"✅ 학습 완료!{Environment.NewLine}");
+                        appended = true;
                         if (_graphWindow != null && !_graphWindow.IsDisposed)
                             _graphWindow.TrainFinished();
                     }
-                    else if (line.StartsWith("[LOG]"))
+                    // [LOG], [ERROR], [GRAPH], 태그 없는 줄 → 메인 로그창에는 표시 안 함
+                    // (그래프 옆 원본 로그창에서 확인 가능)
+
+                    // 실제로 출력했을 때만 스크롤 (흔들림 방지)
+                    if (appended)
                     {
-                        txtLog.AppendText(line.Substring("[LOG]".Length).Trim() + Environment.NewLine);
-                    }
-                    else if (line.StartsWith("[ERROR]"))
-                    {
-                        // TF 잡음 로그는 숨기기
-                        string err = line.Substring("[ERROR]".Length).Trim();
-                        if (!err.Contains("oneDNN") && !err.Contains("absl") &&
-                            !err.Contains("cpu_feature") && !err.Contains("port.cc") &&
-                            !err.Contains("WARNING"))
-                        {
-                            txtLog.AppendText($"[오류] {err}{Environment.NewLine}");
-                        }
-                    }
-                    else
-                    {
-                        txtLog.AppendText(line + Environment.NewLine);
+                        txtLog.SelectionStart = txtLog.Text.Length;
+                        txtLog.ScrollToCaret();
                     }
 
-                    txtLog.SelectionStart = txtLog.Text.Length;
-                    txtLog.ScrollToCaret();
+                    // 그래프 창 로그 섹터에 원본 출력 전달
+                    if (_graphWindow != null && !_graphWindow.IsDisposed)
+                        _graphWindow.AppendRawLog(line);
                 }));
-            
+
             };
 
             process.ErrorDataReceived += (s, args) =>
             {
                 if (string.IsNullOrEmpty(args.Data)) return;
                 string err = args.Data.Trim();
-                if (!err.Contains("oneDNN") && !err.Contains("absl") &&
-                    !err.Contains("cpu_feature") && !err.Contains("port.cc") &&
-                    !err.Contains("WARNING"))
+
+                Invoke(new Action(() =>
                 {
-                    Invoke(new Action(() => txtLog.AppendText($"[오류] {err}{Environment.NewLine}")));
-                }
+                    // 그래프 로그창에는 필터링 없이 원본 그대로 표시
+                    if (_graphWindow != null && !_graphWindow.IsDisposed)
+                        _graphWindow.AppendRawLog($"[STDERR] {err}");
+
+                    // 메인 로그창에는 stderr 숨김 (그래프 옆 원본 로그창에서 확인 가능)
+                }));
             };
 
             process.Exited += (s, args) =>
@@ -317,6 +323,10 @@ namespace Datagram
                     btnTrain.Enabled = true;
                 }));
             };
+
+            // 그래프 창 로그 섹터 초기화
+            if (_graphWindow != null && !_graphWindow.IsDisposed)
+                _graphWindow.StartLogSession();
 
             process.Start();
             _trainProcess = process;
@@ -331,6 +341,21 @@ namespace Datagram
             txtLog.AppendText($"[{time}] {message}\r\n");
             txtLog.SelectionStart = txtLog.Text.Length;
             txtLog.ScrollToCaret();
+        }
+
+        // Keras verbose=1 진행바 줄인지 판별 (예: " 97/97 [====] - 12s 98ms/step - loss: ...")
+        private bool IsKerasProgressLine(string line)
+        {
+            if (string.IsNullOrWhiteSpace(line)) return false;
+            string s = line.Trim();
+            // 진행바 본체 / ETA / step 속도 표기 / epoch 헤더
+            if (s.Contains("[=") || s.Contains("[.") || s.Contains("ETA:") ||
+                s.Contains("step") || s.Contains("us/step") || s.Contains("ms/step"))
+                return true;
+            // "Epoch 1/30" 영어 헤더 (한글 "[학습 x/30회]"와 중복)
+            if (s.StartsWith("Epoch ")) return true;
+            // " 12/97" 처럼 '숫자/숫자'로 시작하는 진행 표기
+            return System.Text.RegularExpressions.Regex.IsMatch(s, @"^\d+/\d+");
         }
 
         private void BtnPlay_Click(object sender, EventArgs e)
@@ -456,17 +481,15 @@ namespace Datagram
 
                 if (nextIdx < frames.Count)
                 {
-                    // 이벤트 핸들러 임시 제거
                     lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
 
-                    // 모든 선택 해제 후 현재 프레임만 선택
-                    lstFrames.ClearSelected();
-                    lstFrames.SelectedIndex = nextIdx;
+                    // 범위 선택 진행 중이면 ClearSelected 생략 (선택 유지)
+                    if (isSelectingRangeStart)
+                        lstFrames.ClearSelected();
 
-                    // 이벤트 핸들러 복구
+                    lstFrames.SelectedIndex = nextIdx;
                     lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
 
-                    // 이미지 표시
                     ShowFrame(frames[nextIdx]);
                 }
                 else
@@ -1600,6 +1623,10 @@ namespace Datagram
                     picMain.Image = Image.FromFile(imgPath);
                 }
 
+                _currentAngle = frame.Angle;
+                _currentImageName = frame.ImagePath;
+                picMain.Invalidate();
+
                 lblAngleName.Text = "Angle: " + frame.Angle.ToString("F3");
                 lblThrottleName.Text = "Throttle: " + frame.Throttle.ToString("F3");
 
@@ -1616,6 +1643,149 @@ namespace Datagram
             catch (Exception ex)
             {
                 txtLog.AppendText("이미지 불러오기 실패: " + ex.Message + "\n");
+            }
+        }
+
+        private async void BtnAIReview_Click(object sender, EventArgs e)
+        {
+            // h5 파일 선택
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.Title  = "학습된 모델 선택";
+                dlg.Filter = "Keras 모델 (*.h5)|*.h5|모든 파일 (*.*)|*.*";
+                if (dlg.ShowDialog() != DialogResult.OK) return;
+                _loadedModelPath = dlg.FileName;
+            }
+
+            if (string.IsNullOrEmpty(currentFolder))
+            {
+                MessageBox.Show("먼저 데이터 폴더를 불러와 주세요.", "알림");
+                return;
+            }
+
+            string scriptPath = GetScriptPath("predict.py");
+            if (scriptPath == null)
+            {
+                MessageBox.Show("predict.py 파일을 찾을 수 없습니다.");
+                return;
+            }
+
+            _predictions.Clear();
+            picMain.Invalidate();
+
+            btnAIreview.Enabled = false;
+            btnAIreview.Text = "예측 중...";
+            AddLog($"AI 검증 시작: {Path.GetFileName(_loadedModelPath)}");
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = "python",
+                Arguments = $"\"{scriptPath}\" --model \"{_loadedModelPath}\" --image_folder \"{currentFolder}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8,
+                StandardErrorEncoding  = System.Text.Encoding.UTF8
+            };
+
+            int count = 0;
+            await Task.Run(() =>
+            {
+                using (var proc = System.Diagnostics.Process.Start(psi))
+                {
+                    string line;
+                    while ((line = proc.StandardOutput.ReadLine()) != null)
+                    {
+                        if (line.StartsWith("[PRED] "))
+                        {
+                            // [PRED] image=xxx.jpg angle=0.123456
+                            try
+                            {
+                                var body  = line.Substring("[PRED] ".Length).Trim();
+                                var parts = body.Split(' ');
+                                string imgName = parts[0].Substring("image=".Length);
+                                double angle   = double.Parse(parts[1].Substring("angle=".Length),
+                                                    System.Globalization.CultureInfo.InvariantCulture);
+                                lock (_predictions)
+                                {
+                                    _predictions[imgName] = angle;
+                                }
+                                count++;
+                            }
+                            catch { }
+                        }
+                    }
+                    proc.WaitForExit();
+                }
+            });
+
+            AddLog($"AI 검증 완료: {count}개 프레임 예측");
+            btnAIreview.Enabled = true;
+            btnAIreview.Text = "AI 검증";
+            picMain.Invalidate();
+        }
+
+        private void PicMain_Paint(object sender, PaintEventArgs e)
+        {
+            if (picMain.Image == null) return;
+
+            Graphics g = e.Graphics;
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+            int w = picMain.ClientSize.Width;
+            int h = picMain.ClientSize.Height;
+
+            // 화살표 기준점: 하단 중앙에서 위로 20px
+            float cx = w / 2f;
+            float cy = h - 20f;
+            float lineLen = 90f;
+
+            // angle(-1~1) → 각도(-20~+20도), 위쪽이 0도 기준
+            double angleDeg = _currentAngle * 20.0;
+            double angleRad = (angleDeg - 90.0) * Math.PI / 180.0;
+
+            float tx = cx + (float)(lineLen * Math.Cos(angleRad));
+            float ty = cy + (float)(lineLen * Math.Sin(angleRad));
+
+            Color lineColor = Color.FromArgb(30, 120, 255);
+
+            using (var pen = new Pen(lineColor, 4f))
+            {
+                g.DrawLine(pen, cx, cy, tx, ty);
+            }
+
+            // 파란 선 수치 텍스트 (실제 angle)
+            string label = _currentAngle.ToString("F2");
+            using (var font = new Font("Consolas", 10f, FontStyle.Bold))
+            using (var brush = new SolidBrush(lineColor))
+            {
+                SizeF sz = g.MeasureString(label, font);
+                g.DrawString(label, font, brush, cx - sz.Width / 2f - 18f, cy - lineLen - sz.Height - 2f);
+            }
+
+            // AI 예측 노란 선
+            if (_currentImageName != null && _predictions.ContainsKey(_currentImageName))
+            {
+                double predAngle = _predictions[_currentImageName];
+                double predDeg   = predAngle * 20.0;
+                double predRad   = (predDeg - 90.0) * Math.PI / 180.0;
+
+                float ptx = cx + (float)(lineLen * Math.Cos(predRad));
+                float pty = cy + (float)(lineLen * Math.Sin(predRad));
+
+                Color predColor = Color.FromArgb(255, 220, 0);
+                using (var pen = new Pen(predColor, 4f))
+                    g.DrawLine(pen, cx, cy, ptx, pty);
+
+                // 노란 선 수치 텍스트 (예측 angle)
+                string predLabel = predAngle.ToString("F2");
+                using (var font = new Font("Consolas", 10f, FontStyle.Bold))
+                using (var brush = new SolidBrush(predColor))
+                {
+                    SizeF sz = g.MeasureString(predLabel, font);
+                    g.DrawString(predLabel, font, brush, cx - sz.Width / 2f + 18f, cy - lineLen - sz.Height - 2f);
+                }
             }
         }
 
@@ -1683,17 +1853,39 @@ namespace Datagram
                     }
                 }
 
-                // 2. catalog 복원
+                // 2. catalog 복원 (index 기준 정렬하여 원래 순서 유지)
                 foreach (string backupCatalog in Directory.GetFiles(deletedFolder, "*.catalog"))
                 {
                     string originalCatalog = Path.Combine(currentFolder, Path.GetFileName(backupCatalog));
                     if (File.Exists(originalCatalog))
                     {
-                        // 기존 catalog에 복원된 라인 추가
                         var linesToRestore = File.ReadAllLines(backupCatalog, Encoding.UTF8)
-                            .Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
-                        File.AppendAllLines(originalCatalog, linesToRestore, Encoding.UTF8);
-                        restoredRecords += linesToRestore.Length;
+                            .Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+
+                        // 기존 라인 + 복원 라인 합치기
+                        var allLines = File.ReadAllLines(originalCatalog, Encoding.UTF8)
+                            .Where(l => !string.IsNullOrWhiteSpace(l))
+                            .Concat(linesToRestore)
+                            .ToList();
+
+                        // index 필드 기준으로 정렬
+                        var sorted = allLines
+                            .Select(l => {
+                                int idx = int.MaxValue;
+                                try {
+                                    var m = System.Text.RegularExpressions.Regex.Match(l, @"""_index""\s*:\s*(\d+)");
+                                    if (!m.Success)
+                                        m = System.Text.RegularExpressions.Regex.Match(l, @"""index""\s*:\s*(\d+)");
+                                    if (m.Success) idx = int.Parse(m.Groups[1].Value);
+                                } catch { }
+                                return new { Line = l, Idx = idx };
+                            })
+                            .OrderBy(x => x.Idx)
+                            .Select(x => x.Line)
+                            .ToArray();
+
+                        File.WriteAllLines(originalCatalog, sorted, Encoding.UTF8);
+                        restoredRecords += linesToRestore.Count;
                     }
                     File.Delete(backupCatalog);
                 }
@@ -1802,7 +1994,11 @@ namespace Datagram
         /// </summary>
         private void BtnRangeSelect_Click(object sender, EventArgs e)
         {
-            if (lstFrames.SelectedIndex < 0)
+            // 재생 중/정지 중 모두 lstFrames.SelectedIndex 기준 (Tick이 이 값을 업데이트함)
+            int currentIdx = lstFrames.SelectedIndex;
+            if (currentIdx < 0) currentIdx = trackFrame.Value;
+
+            if (currentIdx < 0)
             {
                 MessageBox.Show("먼저 프레임을 선택해주세요.", "알림");
                 return;
@@ -1811,43 +2007,38 @@ namespace Datagram
             if (isSelectingRangeStart)
             {
                 // 첫 번째 클릭: 시작 프레임 저장
-                rangeStartIndex = lstFrames.SelectedIndex;
+                rangeStartIndex = currentIdx;
                 btnRangeSelect.Text = "끝점 선택";
+                btnRangeSelect.BackColor = Color.FromArgb(200, 140, 0);
                 isSelectingRangeStart = false;
-                AddLog($"📍 범위 선택 시작: {rangeStartIndex}번 프레임");
+                AddLog($"📍 범위 시작: {rangeStartIndex}번 프레임");
             }
             else
             {
                 // 두 번째 클릭: 범위 선택 완료
-                int rangeEndIndex = lstFrames.SelectedIndex;
+                int rangeEndIndex = currentIdx;
 
-                // 시작과 끝을 올바른 순서로 정렬
                 int minIndex = Math.Min(rangeStartIndex, rangeEndIndex);
                 int maxIndex = Math.Max(rangeStartIndex, rangeEndIndex);
 
                 // 범위 내 모든 항목 선택
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.ClearSelected();
-
                 for (int i = minIndex; i <= maxIndex; i++)
-                {
                     lstFrames.SetSelected(i, true);
-                }
-
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
 
                 // UI 업데이트
                 UpdateRangeSelectionUI(minIndex, maxIndex);
-
-                // 범위 내 첫 항목으로 스크롤
                 lstFrames.TopIndex = minIndex;
 
-                // 버튼 텍스트 복구 및 상태 초기화
+                // 버튼 초기화 (다음 범위 선택 바로 가능)
                 btnRangeSelect.Text = "범위 선택";
+                btnRangeSelect.BackColor = Color.FromArgb(0, 150, 136);
                 isSelectingRangeStart = true;
                 rangeStartIndex = -1;
 
-                AddLog($"✓ 범위 선택 완료: {minIndex}~{maxIndex}번 프레임 ({maxIndex - minIndex + 1}개)");
+                AddLog($"✓ 범위 선택 완료: {minIndex}~{maxIndex}번 ({maxIndex - minIndex + 1}개)");
             }
         }
 
