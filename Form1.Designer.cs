@@ -67,6 +67,7 @@
             this.lblRangeWave = new System.Windows.Forms.Label();
             this.lblRangeCount = new System.Windows.Forms.Label();
             this.lblexplain = new System.Windows.Forms.Label();
+            this.BtnRestore = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.picMain)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.trackFrame)).BeginInit();
             this.gbfilter.SuspendLayout();
@@ -226,10 +227,10 @@
             this.btnDelete.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnDelete.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.btnDelete.ForeColor = System.Drawing.Color.White;
-            this.btnDelete.Location = new System.Drawing.Point(450, 445);
+            this.btnDelete.Location = new System.Drawing.Point(450, 438);
             this.btnDelete.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
             this.btnDelete.Name = "btnDelete";
-            this.btnDelete.Size = new System.Drawing.Size(125, 48);
+            this.btnDelete.Size = new System.Drawing.Size(125, 30);
             this.btnDelete.TabIndex = 11;
             this.btnDelete.Text = "🗑 프레임 삭제";
             this.btnDelete.UseVisualStyleBackColor = false;
@@ -618,6 +619,23 @@
             this.lblexplain.TabIndex = 28;
             this.lblexplain.Text = "(범위 선택 버튼을 클릭하여 시작/끝 프레임을 지정하세요)";
             // 
+            // BtnRestore
+            // 
+            this.BtnRestore.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+            this.BtnRestore.BackColor = System.Drawing.Color.Gray;
+            this.BtnRestore.FlatAppearance.BorderSize = 0;
+            this.BtnRestore.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.BtnRestore.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.BtnRestore.ForeColor = System.Drawing.Color.White;
+            this.BtnRestore.Location = new System.Drawing.Point(450, 472);
+            this.BtnRestore.Margin = new System.Windows.Forms.Padding(3, 2, 3, 2);
+            this.BtnRestore.Name = "BtnRestore";
+            this.BtnRestore.Size = new System.Drawing.Size(125, 30);
+            this.BtnRestore.TabIndex = 11;
+            this.BtnRestore.Text = "↩ 복원";
+            this.BtnRestore.UseVisualStyleBackColor = false;
+            this.BtnRestore.Click += new System.EventHandler(this.BtnRestore_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 12F);
@@ -641,6 +659,7 @@
             this.Controls.Add(this.txtLog);
             this.Controls.Add(this.btnGraph);
             this.Controls.Add(this.btnTrain);
+            this.Controls.Add(this.BtnRestore);
             this.Controls.Add(this.btnDelete);
             this.Controls.Add(this.trackFrame);
             this.Controls.Add(this.lstFrames);
@@ -709,6 +728,7 @@
         private System.Windows.Forms.Label lblRangeWave;
         private System.Windows.Forms.Label lblRangeCount;
         private System.Windows.Forms.Label lblexplain;
+        private System.Windows.Forms.Button BtnRestore;
     }
 }
 

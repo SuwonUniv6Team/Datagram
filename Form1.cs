@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -342,7 +342,8 @@ namespace Datagram
             {
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.ClearSelected();
-                lstFrames.SelectedIndex = 0;
+                if (lstFrames.Items.Count > 0)
+                    lstFrames.SelectedIndex = 0;
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
             }
 
@@ -538,13 +539,16 @@ namespace Datagram
                 if (frames.Count > 0)
                 {
                     trackFrame.Maximum = frames.Count - 1;
-                    trackFrame.Value = 0;
-                    lstFrames.SelectedIndex = 0;
+                    if (trackFrame.Maximum >= 0 && frames.Count > 0)
+                        trackFrame.Value = 0;
+                    if (lstFrames.Items.Count > 0)
+                        lstFrames.SelectedIndex = 0;
                 }
                 else
                 {
                     trackFrame.Maximum = 0;
-                    trackFrame.Value = 0;
+                    if (trackFrame.Maximum >= 0 && frames.Count > 0)
+                        trackFrame.Value = 0;
                     if (picMain.Image != null)
                     {
                         picMain.Image.Dispose();
@@ -603,13 +607,16 @@ namespace Datagram
                 if (frames.Count > 0)
                 {
                     trackFrame.Maximum = frames.Count - 1;
-                    trackFrame.Value = 0;
-                    lstFrames.SelectedIndex = 0;
+                    if (trackFrame.Maximum >= 0 && frames.Count > 0)
+                        trackFrame.Value = 0;
+                    if (lstFrames.Items.Count > 0)
+                        lstFrames.SelectedIndex = 0;
                 }
                 else
                 {
                     trackFrame.Maximum = 0;
-                    trackFrame.Value = 0;
+                    if (trackFrame.Maximum >= 0 && frames.Count > 0)
+                        trackFrame.Value = 0;
                     if (picMain.Image != null)
                     {
                         picMain.Image.Dispose();
@@ -760,23 +767,27 @@ namespace Datagram
 
                 if (frames.Count > 0)
                 {
+                    // 트랙바 범위 설정
+                    trackFrame.Minimum = 0;
                     trackFrame.Maximum = frames.Count - 1;
 
+                    // 다음 인덱스 범위 보정
                     if (nextIndex >= frames.Count)
-                    {
                         nextIndex = frames.Count - 1;
-                    }
+                    if (nextIndex < 0)
+                        nextIndex = 0;
 
                     lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                     lstFrames.SelectedIndex = nextIndex;
-                    lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
                     trackFrame.Value = nextIndex;
+                    lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
                     ShowFrame(frames[nextIndex]);
                 }
                 else
                 {
                     trackFrame.Maximum = 0;
-                    trackFrame.Value = 0;
+                    if (trackFrame.Maximum >= 0 && frames.Count > 0)
+                        trackFrame.Value = 0;
                     if (picMain.Image != null)
                     {
                         picMain.Image.Dispose();
@@ -818,9 +829,15 @@ namespace Datagram
                 {
                     try
                     {
-                        File.Delete(imgPath);
+                                    // _deleted 폴더로 이동
+                        string deletedFolder = Path.Combine(currentFolder, "_deleted", "images");
+                        Directory.CreateDirectory(deletedFolder);
+                        string destPath = Path.Combine(deletedFolder, Path.GetFileName(imgPath));
+                                    // 같은 이름 있으면 덮어쓰기
+                        if (File.Exists(destPath)) File.Delete(destPath);
+                        File.Move(imgPath, destPath);
                         deleted = true;
-                        AddLog($"✓ 이미지 삭제: {frame.ImagePath}");
+                        AddLog($"✓ 이미지 이동: {frame.ImagePath} → _deleted/images/");
                         return true;
                     }
                     catch (IOException ioEx)
@@ -1014,12 +1031,18 @@ namespace Datagram
 
                 if (originalLineCount != filteredLines.Length)
                 {
+                               // 삭제된 라인을 _deleted 폴더에 백업
+                    string deletedFolder = Path.Combine(currentFolder, "_deleted");
+                    Directory.CreateDirectory(deletedFolder);
+                    string backupCatalog = Path.Combine(deletedFolder, Path.GetFileName(catalogPath));
+                    var deletedLines = lines.Except(filteredLines).ToArray();
+                    File.AppendAllLines(backupCatalog, deletedLines, Encoding.UTF8);
+
+                              // 원본 catalog 업데이트
                     using (var writer = new StreamWriter(catalogPath, false, Encoding.UTF8, 4096))
                     {
                         foreach (var line in filteredLines)
-                        {
                             writer.WriteLine(line);
-                        }
                     }
                     return true;
                 }
@@ -1293,6 +1316,10 @@ namespace Datagram
         {
             frames.Clear();
             lstFrames.Items.Clear();
+            // 트랙바 먼저 초기화 (SelectedIndex 오류 방지)
+            trackFrame.Minimum = 0;
+            trackFrame.Maximum = 0;
+            trackFrame.Value   = 0;
             AddLog("━━━ 카탈로그 로드 시작 ━━━");
 
             // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1448,15 +1475,17 @@ namespace Datagram
                 // 원본 데이터 저장 (필터 초기화 시 사용)
                 originalFrames = new List<FrameData>(frames);
 
-                trackFrame.Minimum = 0;
-                trackFrame.Maximum = frames.Count - 1;
-                trackFrame.Value = 0;
-
+                // 리스트박스에 먼저 아이템 추가
                 for (int i = 0; i < frames.Count; i++)
                 {
                     frames[i].FrameIndex = i;
                     lstFrames.Items.Add(frames[i]);
                 }
+
+                // 아이템 추가 후 트랙바 설정
+                trackFrame.Minimum = 0;
+                trackFrame.Maximum = frames.Count - 1;
+                trackFrame.Value = 0;
 
                 // 실제 이미지 파일 검증
                 int missingImages = 0;
@@ -1500,7 +1529,14 @@ namespace Datagram
 
                 // 첫 이미지 자동 출력
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
-                lstFrames.SelectedIndex = 0;
+                trackFrame.Minimum = 0;
+                trackFrame.Maximum = Math.Max(0, frames.Count - 1);
+                if (lstFrames.Items.Count > 0 && frames.Count > 0)
+                {
+                    lstFrames.SelectedIndex = 0;
+                    trackFrame.Value = 0;
+                    ShowFrame(frames[0]);
+                }
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
             }
             else
@@ -1609,6 +1645,82 @@ namespace Datagram
         private void textBox1_TextChanged(object sender, EventArgs e)
         {
 
+        }
+
+        private void BtnRestore_Click(object sender, EventArgs e)
+        {
+            string deletedFolder = Path.Combine(currentFolder, "_deleted");
+
+            if (!Directory.Exists(deletedFolder))
+            {
+                MessageBox.Show("복원할 데이터가 없습니다.\n(_deleted 폴더 없음)", "알림");
+                return;
+            }
+
+            var result = MessageBox.Show(
+                "_deleted 폴더의 모든 데이터를 복원하시겠습니까?",
+                "복원 확인", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes) return;
+
+            try
+            {
+                int restoredImages = 0;
+                int restoredRecords = 0;
+
+                // 1. 이미지 복원
+                string deletedImages = Path.Combine(deletedFolder, "images");
+                if (Directory.Exists(deletedImages))
+                {
+                    foreach (string imgFile in Directory.GetFiles(deletedImages, "*.jpg"))
+                    {
+                        string dest = Path.Combine(currentFolder, "images", Path.GetFileName(imgFile));
+                        if (!File.Exists(dest))
+                        {
+                            File.Move(imgFile, dest);
+                            restoredImages++;
+                        }
+                    }
+                }
+
+                // 2. catalog 복원
+                foreach (string backupCatalog in Directory.GetFiles(deletedFolder, "*.catalog"))
+                {
+                    string originalCatalog = Path.Combine(currentFolder, Path.GetFileName(backupCatalog));
+                    if (File.Exists(originalCatalog))
+                    {
+                        // 기존 catalog에 복원된 라인 추가
+                        var linesToRestore = File.ReadAllLines(backupCatalog, Encoding.UTF8)
+                            .Where(l => !string.IsNullOrWhiteSpace(l)).ToArray();
+                        File.AppendAllLines(originalCatalog, linesToRestore, Encoding.UTF8);
+                        restoredRecords += linesToRestore.Length;
+                    }
+                    File.Delete(backupCatalog);
+                }
+
+                // 3. _deleted 폴더 정리
+                if (Directory.Exists(deletedImages) &&
+                    Directory.GetFiles(deletedImages).Length == 0)
+                    Directory.Delete(deletedImages);
+                if (Directory.GetFiles(deletedFolder).Length == 0 &&
+                    Directory.GetDirectories(deletedFolder).Length == 0)
+                    Directory.Delete(deletedFolder);
+
+                AddLog($"✅ 복원 완료: 이미지 {restoredImages}개, 레코드 {restoredRecords}개");
+                MessageBox.Show(
+                    $"복원 완료!\n이미지: {restoredImages}개\n레코드: {restoredRecords}개\n\n폴더를 다시 로드해주세요.",
+                    "복원 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                // 폴더 자동 재로드
+                LoadCatalog(currentFolder);
+                if (_graphWindow != null && !_graphWindow.IsDisposed)
+                    _graphWindow.LoadFromFolder(currentFolder, frames);
+            }
+            catch (Exception ex)
+            {
+                AddLog($"❌ 복원 실패: {ex.Message}");
+                MessageBox.Show($"복원 중 오류 발생:\n{ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private string PrepareTrainingFolder()
