@@ -33,10 +33,13 @@ namespace Datagram
         // 범위 선택 기능 관련 변수
         private int rangeStartIndex = -1;
         private bool isSelectingRangeStart = true;
+        private readonly List<DeleteRange> deleteRanges = new List<DeleteRange>();
 
         public Form1()
         {
             InitializeComponent();
+            KeyPreview = true;
+            KeyDown += Form1_KeyDown;
             btnLoad.Click += BtnLoad_Click;
             lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
             lstFrames.MouseUp += LstFrames_MouseUp;  // 마우스 업 이벤트 추가 (다중선택용)
@@ -58,9 +61,9 @@ namespace Datagram
             // 다중 선택 모드 활성화 (Ctrl/Shift + 클릭으로 다중 선택 가능)
             lstFrames.SelectionMode = SelectionMode.MultiExtended;
 
-            // Timer 초기화 (약 10 FPS 설정)
+            // Timer 초기화 (약 20 FPS 설정)
             playbackTimer = new Timer();
-            playbackTimer.Interval = 100; // 100ms 마다 틱
+            playbackTimer.Interval = 50; // 50ms 마다 틱
             playbackTimer.Tick += PlaybackTimer_Tick;
 
             // 배속 콤보박스 초기화
@@ -75,6 +78,49 @@ namespace Datagram
 
             // 범위 선택 버튼 이벤트 등록
             btnRangeSelect.Click += BtnRangeSelect_Click;
+            lstDeleteRanges.SelectionMode = SelectionMode.MultiExtended;
+        }
+
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Space || IsEditingInput())
+                return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+            TogglePlayback();
+        }
+
+        private bool IsEditingInput()
+        {
+            Control control = ActiveControl;
+            while (control is ContainerControl container && container.ActiveControl != null)
+                control = container.ActiveControl;
+
+            return control is TextBoxBase
+                || control is NumericUpDown
+                || control is ComboBox;
+        }
+
+        private void TogglePlayback()
+        {
+            if (isPlaybackActive || playbackTimer.Enabled)
+                BtnPause_Click(this, EventArgs.Empty);
+            else
+                BtnPlay_Click(this, EventArgs.Empty);
+        }
+
+        private class DeleteRange
+        {
+            public int StartIndex { get; set; }
+            public int EndIndex { get; set; }
+
+            public int Count => EndIndex - StartIndex + 1;
+
+            public override string ToString()
+            {
+                return $"[{StartIndex:D6} ~ {EndIndex:D6}] {Count}개";
+            }
         }
 
         private void InitializeSpeedComboBox()
@@ -363,7 +409,7 @@ namespace Datagram
             if (frames.Count == 0) return;
 
             // 이미 마지막 프레임인 경우 처음부터 다시 재생
-            if (lstFrames.SelectedIndex >= frames.Count - 1)
+            if (GetCurrentFrameIndex() >= frames.Count - 1)
             {
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                 lstFrames.ClearSelected();
@@ -384,6 +430,35 @@ namespace Datagram
             playbackTimer.Stop();
         }
 
+        private int GetCurrentFrameIndex()
+        {
+            if (frames.Count == 0) return 0;
+
+            if (trackFrame.Value >= 0 && trackFrame.Value < frames.Count)
+                return trackFrame.Value;
+
+            int selectedIndex = lstFrames.SelectedIndex;
+            if (selectedIndex >= 0 && selectedIndex < frames.Count)
+                return selectedIndex;
+
+            return 0;
+        }
+
+        private void ScrollFrameListTo(int index)
+        {
+            if (lstFrames.Items.Count == 0) return;
+
+            int safeIndex = Math.Max(0, Math.Min(index, lstFrames.Items.Count - 1));
+            try
+            {
+                lstFrames.TopIndex = safeIndex;
+            }
+            catch
+            {
+                // TopIndex can throw while the list is being rebuilt.
+            }
+        }
+
         private void BtnNext_Click(object sender, EventArgs e)
         {
             playbackTimer.Stop();
@@ -391,8 +466,7 @@ namespace Datagram
 
             if (frames.Count == 0) return;
 
-            int currentIdx = lstFrames.SelectedIndex;
-            if (currentIdx < 0) currentIdx = 0;
+            int currentIdx = GetCurrentFrameIndex();
 
             // 현재 프레임이 마지막이 아니면 다음으로 이동
             if (currentIdx < frames.Count - 1)
@@ -427,8 +501,7 @@ namespace Datagram
 
             if (frames.Count == 0) return;
 
-            int currentIdx = lstFrames.SelectedIndex;
-            if (currentIdx < 0) currentIdx = frames.Count - 1;
+            int currentIdx = GetCurrentFrameIndex();
 
             // 현재 프레임이 첫 번째가 아니면 이전으로 이동
             if (currentIdx > 0)
@@ -474,22 +547,25 @@ namespace Datagram
 
             try
             {
-                int currentIdx = lstFrames.SelectedIndex;
-                if (currentIdx < 0) currentIdx = 0;
+                int currentIdx = GetCurrentFrameIndex();
 
                 int nextIdx = currentIdx + (int)playbackSpeed;
 
                 if (nextIdx < frames.Count)
                 {
-                    lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
-
-                    // 범위 선택 진행 중이면 ClearSelected 생략 (선택 유지)
                     if (isSelectingRangeStart)
+                    {
+                        lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
                         lstFrames.ClearSelected();
+                        lstFrames.SelectedIndex = nextIdx;
+                        lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+                    }
 
-                    lstFrames.SelectedIndex = nextIdx;
-                    lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
+                    trackFrame.ValueChanged -= TrackFrame_Scroll;
+                    trackFrame.Value = nextIdx;
+                    trackFrame.ValueChanged += TrackFrame_Scroll;
 
+                    ScrollFrameListTo(nextIdx);
                     ShowFrame(frames[nextIdx]);
                 }
                 else
@@ -512,6 +588,7 @@ namespace Datagram
             try
             {
                 if (frames == null || frames.Count == 0) return;
+                ResetRangeSelectionState(true);
 
                 // 전체 데이터 리스트 (// 변수명 입력 필요)
                 // IEnumerable<DonkeyFrame> query = 전체데이터리스트.AsEnumerable();
@@ -603,6 +680,8 @@ namespace Datagram
         {
             try
             {
+                ResetRangeSelectionState(true);
+
                 // 1. 모든 체크박스를 Checked = false로 변경
                 cbox1.Checked = false;
                 cbox2.Checked = false;
@@ -701,9 +780,22 @@ namespace Datagram
 
         private void BtnDelete_Click(object sender, EventArgs e)
         {
-            if (lstFrames.SelectedIndices.Count == 0 || frames.Count == 0) return;
+            if (frames.Count == 0) return;
 
-            var result = MessageBox.Show("현재 프레임을 삭제하시겠습니까?\n(이미지와 데이터가 완전히 삭제됩니다)", 
+            var selectedIndices = GetIndicesSelectedForDeletion()
+                .Where(i => i >= 0 && i < frames.Count)
+                .Distinct()
+                .OrderByDescending(i => i)
+                .ToList();
+
+            if (selectedIndices.Count == 0) return;
+
+            var selectedRangeIndices = lstDeleteRanges.SelectedIndices
+                .Cast<int>()
+                .Where(i => i >= 0 && i < deleteRanges.Count)
+                .ToList();
+
+            var result = MessageBox.Show($"선택된 {selectedIndices.Count}개 프레임을 삭제하시겠습니까?\n(이미지와 데이터가 완전히 삭제됩니다)", 
                 "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
@@ -724,7 +816,6 @@ namespace Datagram
                 }
 
                 // 인덱스가 꼬이지 않도록 내림차순 정렬 후 삭제
-                var selectedIndices = lstFrames.SelectedIndices.Cast<int>().OrderByDescending(i => i).ToList();
                 int nextIndex = selectedIndices.Min();
 
                 int imageDeletedCount = 0;
@@ -824,6 +915,8 @@ namespace Datagram
 
                 // 원본 데이터도 동기화
                 originalFrames = new List<FrameData>(frames);
+                UpdateDeleteRangesAfterDeletion(selectedIndices, selectedRangeIndices);
+                ResetRangeSelectionState();
             }
         }
 
@@ -1339,6 +1432,7 @@ namespace Datagram
         {
             frames.Clear();
             lstFrames.Items.Clear();
+            ResetRangeSelectionState(true);
             // 트랙바 먼저 초기화 (SelectedIndex 오류 방지)
             trackFrame.Minimum = 0;
             trackFrame.Maximum = 0;
@@ -1900,7 +1994,7 @@ namespace Datagram
 
                 AddLog($"✅ 복원 완료: 이미지 {restoredImages}개, 레코드 {restoredRecords}개");
                 MessageBox.Show(
-                    $"복원 완료!\n이미지: {restoredImages}개\n레코드: {restoredRecords}개\n\n폴더를 다시 로드해주세요.",
+                    $"복원 완료!\n이미지: {restoredImages}개\n레코드: {restoredRecords}개",
                     "복원 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 // 폴더 자동 재로드
@@ -1994,9 +2088,8 @@ namespace Datagram
         /// </summary>
         private void BtnRangeSelect_Click(object sender, EventArgs e)
         {
-            // 재생 중/정지 중 모두 lstFrames.SelectedIndex 기준 (Tick이 이 값을 업데이트함)
-            int currentIdx = lstFrames.SelectedIndex;
-            if (currentIdx < 0) currentIdx = trackFrame.Value;
+            // 재생 중에는 선택 목록이 고정될 수 있으므로 실제 현재 위치는 트랙바 기준으로 잡는다.
+            int currentIdx = GetCurrentFrameIndex();
 
             if (currentIdx < 0)
             {
@@ -2023,23 +2116,150 @@ namespace Datagram
 
                 // 범위 내 모든 항목 선택
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
-                lstFrames.ClearSelected();
                 for (int i = minIndex; i <= maxIndex; i++)
                     lstFrames.SetSelected(i, true);
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
 
                 // UI 업데이트
                 UpdateRangeSelectionUI(minIndex, maxIndex);
+                AddDeleteRange(minIndex, maxIndex);
                 lstFrames.TopIndex = minIndex;
 
                 // 버튼 초기화 (다음 범위 선택 바로 가능)
-                btnRangeSelect.Text = "범위 선택";
-                btnRangeSelect.BackColor = Color.FromArgb(0, 150, 136);
-                isSelectingRangeStart = true;
-                rangeStartIndex = -1;
+                ResetRangeSelectionState();
 
                 AddLog($"✓ 범위 선택 완료: {minIndex}~{maxIndex}번 ({maxIndex - minIndex + 1}개)");
             }
+        }
+
+        private void AddDeleteRange(int startIndex, int endIndex)
+        {
+            int start = Math.Max(0, Math.Min(startIndex, endIndex));
+            int end = Math.Min(frames.Count - 1, Math.Max(startIndex, endIndex));
+            if (start > end) return;
+
+            DeleteRange range = new DeleteRange { StartIndex = start, EndIndex = end };
+            deleteRanges.Add(range);
+
+            lstDeleteRanges.Items.Add(range);
+            lstDeleteRanges.SetSelected(lstDeleteRanges.Items.Count - 1, true);
+        }
+
+        private void UpdateDeleteRangesAfterDeletion(List<int> deletedIndicesDescending, List<int> deletedRangeIndices)
+        {
+            if (lstDeleteRanges == null) return;
+
+            var deletedIndices = deletedIndicesDescending
+                .Distinct()
+                .OrderBy(i => i)
+                .ToList();
+            var deletedIndexSet = new HashSet<int>(deletedIndices);
+            var deletedRangeSet = new HashSet<int>(deletedRangeIndices);
+            var rebuiltRanges = new List<DeleteRange>();
+
+            for (int rangeIndex = 0; rangeIndex < deleteRanges.Count; rangeIndex++)
+            {
+                if (deletedRangeSet.Contains(rangeIndex))
+                    continue;
+
+                DeleteRange range = deleteRanges[rangeIndex];
+                var mappedIndices = new List<int>();
+
+                for (int oldIndex = range.StartIndex; oldIndex <= range.EndIndex; oldIndex++)
+                {
+                    if (deletedIndexSet.Contains(oldIndex))
+                        continue;
+
+                    int newIndex = oldIndex - CountDeletedBefore(deletedIndices, oldIndex);
+                    if (newIndex >= 0 && newIndex < frames.Count)
+                        mappedIndices.Add(newIndex);
+                }
+
+                AddContiguousRanges(mappedIndices, rebuiltRanges);
+            }
+
+            deleteRanges.Clear();
+            deleteRanges.AddRange(rebuiltRanges);
+
+            lstDeleteRanges.Items.Clear();
+            foreach (DeleteRange range in deleteRanges)
+                lstDeleteRanges.Items.Add(range);
+
+            for (int i = 0; i < lstDeleteRanges.Items.Count; i++)
+                lstDeleteRanges.SetSelected(i, true);
+        }
+
+        private int CountDeletedBefore(List<int> deletedIndicesAscending, int index)
+        {
+            int count = 0;
+            foreach (int deletedIndex in deletedIndicesAscending)
+            {
+                if (deletedIndex >= index)
+                    break;
+                count++;
+            }
+            return count;
+        }
+
+        private void AddContiguousRanges(List<int> indices, List<DeleteRange> target)
+        {
+            if (indices.Count == 0) return;
+
+            indices.Sort();
+            int start = indices[0];
+            int end = indices[0];
+
+            for (int i = 1; i < indices.Count; i++)
+            {
+                if (indices[i] == end + 1)
+                {
+                    end = indices[i];
+                    continue;
+                }
+
+                target.Add(new DeleteRange { StartIndex = start, EndIndex = end });
+                start = indices[i];
+                end = indices[i];
+            }
+
+            target.Add(new DeleteRange { StartIndex = start, EndIndex = end });
+        }
+
+        private IEnumerable<int> GetIndicesSelectedForDeletion()
+        {
+            if (lstDeleteRanges.SelectedIndices.Count > 0)
+            {
+                foreach (int rangeIndex in lstDeleteRanges.SelectedIndices)
+                {
+                    if (rangeIndex < 0 || rangeIndex >= deleteRanges.Count)
+                        continue;
+
+                    DeleteRange range = deleteRanges[rangeIndex];
+                    int start = Math.Max(0, range.StartIndex);
+                    int end = Math.Min(frames.Count - 1, range.EndIndex);
+                    for (int i = start; i <= end; i++)
+                        yield return i;
+                }
+
+                yield break;
+            }
+
+            foreach (int index in lstFrames.SelectedIndices)
+                yield return index;
+        }
+
+        private void ResetRangeSelectionState(bool clearRangeInfo = false)
+        {
+            btnRangeSelect.Text = "범위 선택";
+            btnRangeSelect.BackColor = Color.FromArgb(0, 150, 136);
+            isSelectingRangeStart = true;
+            rangeStartIndex = -1;
+
+            if (!clearRangeInfo) return;
+
+            deleteRanges.Clear();
+            if (lstDeleteRanges != null)
+                lstDeleteRanges.Items.Clear();
         }
 
         /// <summary>
@@ -2050,25 +2270,7 @@ namespace Datagram
         {
             try
             {
-                int selectedCount = endIndex - startIndex + 1;
-
-                // 선택된 개수 표시 (lblRangeCount)
-                if (lblRangeCount != null)
-                {
-                    lblRangeCount.Text = $"/ {selectedCount}개";
-                }
-
-                // 시작 프레임 번호 표시 (6자리 형식, txtRangeStart)
-                if (txtRangeStart != null)
-                {
-                    txtRangeStart.Text = startIndex.ToString("D6");
-                }
-
-                // 끝 프레임 번호 표시 (6자리 형식, txtRangeEnd)
-                if (txtRangeEnd != null)
-                {
-                    txtRangeEnd.Text = endIndex.ToString("D6");
-                }
+                int selectedCount = lstFrames.SelectedIndices.Count;
 
                 AddLog($"📊 범위 정보: 시작={startIndex:D6}, 끝={endIndex:D6}, 개수={selectedCount}개");
             }
