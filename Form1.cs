@@ -268,10 +268,14 @@ namespace Datagram
                 Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\" --epochs {(int)nudEpochs.Value}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                RedirectStandardError  = true,
                 CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(scriptPath)
+                WorkingDirectory           = Path.GetDirectoryName(scriptPath),
+                StandardOutputEncoding     = System.Text.Encoding.UTF8,
+                StandardErrorEncoding      = System.Text.Encoding.UTF8
             };
+            psi.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+            psi.EnvironmentVariables["PYTHONUTF8"]       = "1";
 
             Process process = new Process();
             process.StartInfo = psi;
@@ -1793,6 +1797,8 @@ namespace Datagram
                 StandardOutputEncoding = System.Text.Encoding.UTF8,
                 StandardErrorEncoding  = System.Text.Encoding.UTF8
             };
+            psi.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+            psi.EnvironmentVariables["PYTHONUTF8"]       = "1";
 
             int count = 0;
             await Task.Run(() =>

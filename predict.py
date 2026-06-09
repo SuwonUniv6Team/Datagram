@@ -10,6 +10,12 @@ import json
 import argparse
 import numpy as np
 
+# Windows에서 한글 경로/로그 깨짐 방지: stdout/stderr를 UTF-8로 강제
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
@@ -36,7 +42,10 @@ except ImportError:
     error("설치 필요: pip install tensorflow")
 
 def load_image(img_path, img_size=(120, 160)):
-    img = cv2.imread(img_path)
+    # cv2.imread는 Windows에서 한글 경로를 지원하지 않으므로
+    # np.fromfile + imdecode 방식으로 읽음
+    raw = np.fromfile(img_path, dtype=np.uint8)
+    img = cv2.imdecode(raw, cv2.IMREAD_COLOR)
     if img is None:
         return None
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
