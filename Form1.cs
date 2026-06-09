@@ -83,12 +83,20 @@ namespace Datagram
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode != Keys.Space || IsEditingInput())
-                return;
+            if (IsEditingInput()) return;
 
-            e.Handled = true;
-            e.SuppressKeyPress = true;
-            TogglePlayback();
+            if (e.KeyCode == Keys.Space)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                TogglePlayback();
+            }
+            else if (e.KeyCode == Keys.R)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                BtnRangeSelect_Click(null, EventArgs.Empty);
+            }
         }
 
         private bool IsEditingInput()
@@ -325,7 +333,10 @@ namespace Datagram
                         txtLog.AppendText($"✅ 학습 완료!{Environment.NewLine}");
                         appended = true;
                         if (_graphWindow != null && !_graphWindow.IsDisposed)
+                        {
                             _graphWindow.TrainFinished();
+                            _graphWindow.ShowAngleDistribution(frames);
+                        }
                     }
                     // [LOG], [ERROR], [GRAPH], 태그 없는 줄 → 메인 로그창에는 표시 안 함
                     // (그래프 옆 원본 로그창에서 확인 가능)
