@@ -39,6 +39,9 @@ namespace Datagram
         // 학습 로그
         private RichTextBox  rtbLog;
 
+        // 학습 완료 후 angle 분포 패널
+        private AngleDistPanel _angleDistPanel;
+
         public GraphWindow()
         {
             InitUI();
@@ -47,8 +50,8 @@ namespace Datagram
         private void InitUI()
         {
             this.Text            = "Datagram - 그래프 분석";
-            this.Size            = new Size(900, 620);
-            this.MinimumSize     = new Size(700, 500);
+            this.Size            = new Size(1300, 820);
+            this.MinimumSize     = new Size(900, 600);
             this.BackColor       = Color.FromArgb(25, 25, 25);
             this.ForeColor       = Color.White;
             this.StartPosition   = FormStartPosition.CenterScreen;
@@ -309,7 +312,7 @@ namespace Datagram
             Panel descPanel = new Panel
             {
                 Dock      = DockStyle.Bottom,
-                Height    = 58,
+                Height    = 66,
                 BackColor = Color.FromArgb(30, 30, 30),
                 Padding   = new Padding(10, 6, 10, 6)
             };
@@ -344,7 +347,17 @@ namespace Datagram
 
             descPanel.Controls.Add(descInner);
 
+            // angle 분포 히스토그램 (학습 완료 후 표시)
+            _angleDistPanel = new AngleDistPanel
+            {
+                Dock      = DockStyle.Bottom,
+                Height    = 150,
+                BackColor = Color.FromArgb(20, 20, 20),
+                Visible   = false
+            };
+
             page.Controls.Add(splitMain);
+            page.Controls.Add(_angleDistPanel);
             page.Controls.Add(descPanel);
             page.Controls.Add(infoPanel);
         }
@@ -373,6 +386,17 @@ namespace Datagram
                 lblEpochInfo.Text      = $"✅ 학습 완료!   최저 검증오차: {trainGraph.BestValLoss:F6}";
                 lblEpochInfo.ForeColor = Color.FromArgb(100, 255, 150);
                 UpdateScore(trainGraph.BestValLoss, trainGraph.BestValLoss);
+            }));
+        }
+
+        public void ShowAngleDistribution(List<FrameData> frames)
+        {
+            if (this.IsDisposed || frames == null || frames.Count == 0) return;
+            this.Invoke(new Action(() =>
+            {
+                _angleDistPanel.SetData(frames.Select(f => f.Angle).ToList());
+                _angleDistPanel.Visible = true;
+                tabControl.SelectedTab  = tabTrain;
             }));
         }
 
@@ -919,6 +943,104 @@ namespace Datagram
                 Color[] colors = { Color.FromArgb(200,200,200), CTrain, CVal, Color.FromArgb(160,160,160), CBest };
                 for (int i = 0; i < lines.Count; i++)
                     g.DrawString(lines[i], font, new SolidBrush(i < colors.Length ? colors[i] : colors[0]), tx + 4, ty + 7 + i * lh);
+            }
+        }
+    }
+
+    // ── Angle 분포 히스토그램 패널 ───────────────────────────────────────────
+    public class AngleDistPanel : Control
+    {
+        private const int BUCKETS = 20;          // -1.0 ~ 1.0 을 20구간으로
+        private int[]    _counts  = new int[BUCKETS];
+        private int      _total   = 0;
+        private double   _threshold = 0.03;      // 전체의 3% 미만이면 부족 판정
+
+        public AngleDistPanel() { DoubleBuffered = true; }
+
+        public void SetData(List<double> angles)
+        {
+            _counts = new int[BUCKETS];
+            _total  = angles.Count;
+            foreach (var a in angles)
+            {
+                int b = (int)((a + 1.0) / 2.0 * BUCKETS);
+                b = Math.Max(0, Math.Min(BUCKETS - 1, b));
+                _counts[b]++;
+            }
+            Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            if (_total == 0) return;
+
+            Graphics g   = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            int PL = 12, PR = 12, PT = 28, PB = 44;
+            int W  = ClientSize.Width  - PL - PR;
+            int H  = ClientSize.Height - PT - PB;
+            int maxCount = _counts.Max();
+            if (maxCount == 0) return;
+
+            int threshold = (int)(_total * _threshold);
+            float bw = W / (float)BUCKETS;
+
+            // 제목
+            using (var f = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+            using (var b = new SolidBrush(Color.FromArgb(200, 200, 200)))
+                g.DrawString("📊 Angle 분포 — 빨간 구간은 학습 자료 부족", f, b, PL, 6);
+
+            for (int i = 0; i < BUCKETS; i++)
+            {
+                float bh     = (float)_counts[i] / maxCount * H;
+                float x      = PL + i * bw;
+                float y      = PT + H - bh;
+                bool  lack   = _counts[i] < threshold;
+
+                // 막대 색상: 부족 → 빨강, 중간(0 근처) → 밝은 파랑, 나머지 → 파랑
+                int mid  = BUCKETS / 2;
+                bool center = (i == mid - 1 || i == mid);
+                Color barColor = lack   ? Color.FromArgb(220, 60, 60)
+                               : center ? Color.FromArgb(80, 200, 255)
+                                        : Color.FromArgb(50, 130, 220);
+
+                using (var br = new SolidBrush(barColor))
+                    g.FillRectangle(br, x + 1, y, bw - 2, bh);
+
+                // 부족 구간에 테두리 강조
+                if (lack)
+                    using (var pen = new Pen(Color.FromArgb(255, 100, 100), 1.5f))
+                        g.DrawRectangle(pen, x + 1, y, bw - 2, bh);
+            }
+
+            // X 축 레이블 (-1.0 / 0 / +1.0)
+            using (var f = new Font("Consolas", 7.5f))
+            using (var b = new SolidBrush(Color.FromArgb(140, 140, 140)))
+            {
+                g.DrawString("-1.0", f, b, PL,              PT + H + 4);
+                g.DrawString("0",   f, b, PL + W / 2f - 5, PT + H + 4);
+                g.DrawString("+1.0",f, b, PL + W - 24,     PT + H + 4);
+            }
+
+            // 부족 구간 요약 메시지
+            var lackRanges = new List<string>();
+            for (int i = 0; i < BUCKETS; i++)
+            {
+                if (_counts[i] < threshold)
+                {
+                    double lo = -1.0 + i * (2.0 / BUCKETS);
+                    double hi = lo + (2.0 / BUCKETS);
+                    lackRanges.Add($"{lo:+0.0;-0.0}~{hi:+0.0;-0.0}");
+                }
+            }
+            if (lackRanges.Count > 0)
+            {
+                string msg = "⚠ 부족 구간: " + string.Join("  ", lackRanges);
+                using (var f = new Font("Segoe UI", 7.8f))
+                using (var b = new SolidBrush(Color.FromArgb(255, 130, 80)))
+                    g.DrawString(msg, f, b, PL, PT + H + 14);
             }
         }
     }

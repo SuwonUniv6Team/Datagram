@@ -22,6 +22,8 @@ namespace Datagram
         private float playbackSpeed = 1.0f;
         private bool isUserInteracting = false;
         private bool isPlaybackActive = false;  // 재생 중 플래그
+        private int _prevPlayIdx = -1;           // 직전 재생 위치 (SetSelected 정리용)
+        private List<(int start, int end)> _markedRanges = new List<(int, int)>(); // 완성된 범위 목록
         private GraphWindow _graphWindow;
         private double _currentAngle = 0.0;
         private string _currentImageName = null;
@@ -52,6 +54,8 @@ namespace Datagram
             btnTrain.Click += BtnTrain_Click;
             picMain.Paint += PicMain_Paint;
             btnAIreview.Click += BtnAIReview_Click;
+            this.KeyPreview = true;
+            this.KeyDown += Form1_KeyDown;
             btnAIreview.Text = "AI 검증";
             btnGraph.Click += BtnGraph_Click;
 
@@ -280,6 +284,7 @@ namespace Datagram
                         appended = true;
                         if (_graphWindow != null && !_graphWindow.IsDisposed)
                             _graphWindow.TrainFinished();
+                            _graphWindow.ShowAngleDistribution(frames);
                     }
                     // [LOG], [ERROR], [GRAPH], 태그 없는 줄 → 메인 로그창에는 표시 안 함
                     // (그래프 옆 원본 로그창에서 확인 가능)
@@ -344,6 +349,32 @@ namespace Datagram
         }
 
         // Keras verbose=1 진행바 줄인지 판별 (예: " 97/97 [====] - 12s 98ms/step - loss: ...")
+        private void Form1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Space)
+            {
+                e.SuppressKeyPress = true; // 버튼 클릭음/스크롤 방지
+                BtnRangeSelect_Click(sender, e);
+            }
+        }
+
+        private bool IsInMarkedRange(int idx)
+        {
+            foreach (var r in _markedRanges)
+                if (idx >= r.start && idx <= r.end) return true;
+            return false;
+        }
+
+        private void ClearMarkedRanges()
+        {
+            _markedRanges.Clear();
+            _prevPlayIdx = -1;
+            isSelectingRangeStart = true;
+            rangeStartIndex = -1;
+            btnRangeSelect.Text = "범위 선택";
+            btnRangeSelect.BackColor = Color.FromArgb(0, 150, 136);
+        }
+
         private bool IsKerasProgressLine(string line)
         {
             if (string.IsNullOrWhiteSpace(line)) return false;
@@ -362,15 +393,16 @@ namespace Datagram
         {
             if (frames.Count == 0) return;
 
-            // 이미 마지막 프레임인 경우 처음부터 다시 재생
-            if (lstFrames.SelectedIndex >= frames.Count - 1)
+            // 재생 시작 시 범위 선택 초기화
+            ClearMarkedRanges();
+            lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
+            lstFrames.ClearSelected();
+            if (lstFrames.SelectedIndex < 0 || lstFrames.SelectedIndex >= frames.Count - 1)
             {
-                lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
-                lstFrames.ClearSelected();
                 if (lstFrames.Items.Count > 0)
                     lstFrames.SelectedIndex = 0;
-                lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
             }
+            lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
 
             isPlaybackActive = true;
             AddLog("▶ 자동재생 시작");
@@ -380,6 +412,7 @@ namespace Datagram
         private void BtnPause_Click(object sender, EventArgs e)
         {
             isPlaybackActive = false;
+            // 범위 선택 유지 (초기화 안 함)
             AddLog("⏸ 자동재생 정지");
             playbackTimer.Stop();
         }
@@ -474,7 +507,8 @@ namespace Datagram
 
             try
             {
-                int currentIdx = lstFrames.SelectedIndex;
+                // 범위 선택 중엔 SelectedIndex가 -1 될 수 있으므로 trackFrame 기준 사용
+                int currentIdx = _prevPlayIdx >= 0 ? _prevPlayIdx : trackFrame.Value;
                 if (currentIdx < 0) currentIdx = 0;
 
                 int nextIdx = currentIdx + (int)playbackSpeed;
@@ -483,18 +517,32 @@ namespace Datagram
                 {
                     lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
 
-                    // 범위 선택 진행 중이면 ClearSelected 생략 (선택 유지)
-                    if (isSelectingRangeStart)
+                    if (_markedRanges.Count == 0 && isSelectingRangeStart)
+                    {
+                        // 범위 선택 없는 일반 재생: 기존 방식
                         lstFrames.ClearSelected();
+                        lstFrames.SelectedIndex = nextIdx;
+                    }
+                    else
+                    {
+                        // 범위가 있거나 시작점 대기 중: SetSelected로 기존 선택 유지
+                        // 이전 커서 위치가 어느 범위에도 속하지 않으면 해제
+                        if (_prevPlayIdx >= 0 && !IsInMarkedRange(_prevPlayIdx))
+                            lstFrames.SetSelected(_prevPlayIdx, false);
+                        lstFrames.SetSelected(nextIdx, true);
+                    }
 
-                    lstFrames.SelectedIndex = nextIdx;
+                    _prevPlayIdx = nextIdx;
+                    trackFrame.ValueChanged -= TrackFrame_Scroll;
+                    trackFrame.Value = nextIdx;
+                    trackFrame.ValueChanged += TrackFrame_Scroll;
                     lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
 
                     ShowFrame(frames[nextIdx]);
                 }
                 else
                 {
-                    playbackTimer.Stop(); // 마지막 프레임에 도달하면 정지
+                    playbackTimer.Stop();
                     isPlaybackActive = false;
                     AddLog("⏹ 재생 종료");
                 }
@@ -1994,8 +2042,11 @@ namespace Datagram
         /// </summary>
         private void BtnRangeSelect_Click(object sender, EventArgs e)
         {
-            // 재생 중/정지 중 모두 lstFrames.SelectedIndex 기준 (Tick이 이 값을 업데이트함)
-            int currentIdx = lstFrames.SelectedIndex;
+            // 재생 중엔 _prevPlayIdx(Tick이 추적하는 실제 재생 위치) 사용
+            // 범위 선택 상태에선 SelectedIndex가 엉뚱한 값을 반환할 수 있음
+            int currentIdx = isPlaybackActive
+                ? (_prevPlayIdx >= 0 ? _prevPlayIdx : trackFrame.Value)
+                : lstFrames.SelectedIndex;
             if (currentIdx < 0) currentIdx = trackFrame.Value;
 
             if (currentIdx < 0)
@@ -2021,24 +2072,24 @@ namespace Datagram
                 int minIndex = Math.Min(rangeStartIndex, rangeEndIndex);
                 int maxIndex = Math.Max(rangeStartIndex, rangeEndIndex);
 
-                // 범위 내 모든 항목 선택
+                // 범위 목록에 추가
+                _markedRanges.Add((minIndex, maxIndex));
+
+                // 기존 선택 유지하며 새 범위 추가 선택
                 lstFrames.SelectedIndexChanged -= LstFrames_SelectedIndexChanged;
-                lstFrames.ClearSelected();
                 for (int i = minIndex; i <= maxIndex; i++)
                     lstFrames.SetSelected(i, true);
                 lstFrames.SelectedIndexChanged += LstFrames_SelectedIndexChanged;
 
-                // UI 업데이트
                 UpdateRangeSelectionUI(minIndex, maxIndex);
-                lstFrames.TopIndex = minIndex;
 
-                // 버튼 초기화 (다음 범위 선택 바로 가능)
+                // 버튼 초기화 → 바로 다음 범위 선택 가능
                 btnRangeSelect.Text = "범위 선택";
                 btnRangeSelect.BackColor = Color.FromArgb(0, 150, 136);
                 isSelectingRangeStart = true;
                 rangeStartIndex = -1;
 
-                AddLog($"✓ 범위 선택 완료: {minIndex}~{maxIndex}번 ({maxIndex - minIndex + 1}개)");
+                AddLog($"✓ 범위 {_markedRanges.Count}개 완료: {minIndex}~{maxIndex}번 ({maxIndex - minIndex + 1}개)");
             }
         }
 
