@@ -33,6 +33,7 @@ namespace Datagram
         private Label       lblBestVal;
         private Label       lblScore;
         private TrainGraphPanel trainGraph;
+        private AngleDistPanel  _angleDistPanel;
 
         private Dictionary<string, List<FrameData>> _catalogData = new Dictionary<string, List<FrameData>>();
 
@@ -47,8 +48,8 @@ namespace Datagram
         private void InitUI()
         {
             this.Text            = "Datagram - 그래프 분석";
-            this.Size            = new Size(900, 620);
-            this.MinimumSize     = new Size(700, 500);
+            this.Size            = new Size(1300, 820);
+            this.MinimumSize     = new Size(900, 600);
             this.BackColor       = Color.FromArgb(25, 25, 25);
             this.ForeColor       = Color.White;
             this.StartPosition   = FormStartPosition.CenterScreen;
@@ -305,11 +306,19 @@ namespace Datagram
             logPanel.Controls.Add(logToolbar);
             splitMain.Panel2.Controls.Add(logPanel);
 
+            // ── Angle 분포 히스토그램 패널 (학습 완료 후 표시) ──
+            _angleDistPanel = new AngleDistPanel
+            {
+                Dock    = DockStyle.Bottom,
+                Height  = 150,
+                Visible = false
+            };
+
             // ── 하단 설명 패널 ──
             Panel descPanel = new Panel
             {
                 Dock      = DockStyle.Bottom,
-                Height    = 58,
+                Height    = 66,
                 BackColor = Color.FromArgb(30, 30, 30),
                 Padding   = new Padding(10, 6, 10, 6)
             };
@@ -344,9 +353,11 @@ namespace Datagram
 
             descPanel.Controls.Add(descInner);
 
-            page.Controls.Add(splitMain);
-            page.Controls.Add(descPanel);
-            page.Controls.Add(infoPanel);
+            // 도킹 순서 중요: 높은 인덱스부터 처리 (Top→Bottom→Bottom→Fill)
+            page.Controls.Add(splitMain);        // 0 → Fill (마지막 처리)
+            page.Controls.Add(_angleDistPanel);  // 1 → Bottom (descPanel 바로 위)
+            page.Controls.Add(descPanel);        // 2 → Bottom (최하단)
+            page.Controls.Add(infoPanel);        // 3 → Top (최상단, 먼저 처리)
         }
 
         public void AddTrainEpoch(int epoch, int totalEpochs, double loss, double valLoss)
@@ -373,6 +384,19 @@ namespace Datagram
                 lblEpochInfo.Text      = $"✅ 학습 완료!   최저 검증오차: {trainGraph.BestValLoss:F6}";
                 lblEpochInfo.ForeColor = Color.FromArgb(100, 255, 150);
                 UpdateScore(trainGraph.BestValLoss, trainGraph.BestValLoss);
+            }));
+        }
+
+        public void ShowAngleDistribution(List<FrameData> frames)
+        {
+            if (this.IsDisposed || _angleDistPanel == null || frames == null || frames.Count == 0)
+                return;
+
+            this.Invoke(new Action(() =>
+            {
+                _angleDistPanel.SetData(frames.Select(f => f.Angle).ToList());
+                _angleDistPanel.Visible = true;
+                tabControl.SelectedTab = tabTrain;
             }));
         }
 
@@ -919,6 +943,132 @@ namespace Datagram
                 Color[] colors = { Color.FromArgb(200,200,200), CTrain, CVal, Color.FromArgb(160,160,160), CBest };
                 for (int i = 0; i < lines.Count; i++)
                     g.DrawString(lines[i], font, new SolidBrush(i < colors.Length ? colors[i] : colors[0]), tx + 4, ty + 7 + i * lh);
+            }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // Angle 분포 히스토그램 패널 (학습 완료 후 표시)
+    // ════════════════════════════════════════════════════════════════
+    public class AngleDistPanel : Control
+    {
+        private const int BUCKETS = 20;   // -1.0 ~ +1.0 을 20구간으로
+        private const int PT      = 10;   // 상단 여백
+        private const int PB      = 44;   // 하단 여백 (X축 레이블 + 경고 텍스트)
+        private const int PL      = 50;   // 왼쪽 여백
+        private const int PR      = 20;   // 오른쪽 여백
+
+        private int[]    _counts  = new int[BUCKETS];
+        private int      _total   = 0;
+
+        public AngleDistPanel()
+        {
+            this.BackColor    = Color.FromArgb(22, 22, 22);
+            this.DoubleBuffered = true;
+        }
+
+        public void SetData(List<double> angles)
+        {
+            _counts = new int[BUCKETS];
+            _total  = angles.Count;
+
+            foreach (double a in angles)
+            {
+                double clamped = Math.Max(-1.0, Math.Min(1.0, a));
+                int idx = (int)((clamped + 1.0) / 2.0 * BUCKETS);
+                if (idx >= BUCKETS) idx = BUCKETS - 1;
+                _counts[idx]++;
+            }
+            this.Invalidate();
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            base.OnPaint(e);
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+
+            int w = Width;
+            int h = Height;
+
+            // 제목
+            using (var f = new Font("Segoe UI", 8.5f, FontStyle.Bold))
+            using (var br = new SolidBrush(Color.FromArgb(180, 180, 180)))
+                g.DrawString("📊 Angle 분포 (학습 데이터)", f, br, PL, 2);
+
+            if (_total == 0) return;
+
+            int drawW = w - PL - PR;
+            int drawH = h - PT - PB;
+            int maxCount = _counts.Max();
+            if (maxCount == 0) return;
+
+            // 부족 구간 임계값: 전체 평균의 30% 미만 or 3% 미만
+            double avgCount = (double)_total / BUCKETS;
+            int threshold   = Math.Max(3, (int)(avgCount * 0.30));
+
+            // 부족 구간 목록 (경고용)
+            var sparseRanges = new List<string>();
+
+            float barW = drawW / (float)BUCKETS;
+
+            for (int i = 0; i < BUCKETS; i++)
+            {
+                float barH   = (float)_counts[i] / maxCount * drawH;
+                float x      = PL + i * barW;
+                float y      = PT + drawH - barH;
+
+                bool isSparse  = _counts[i] < threshold;
+                bool isCenter  = (i >= BUCKETS / 2 - 2 && i <= BUCKETS / 2 + 1); // 직진 구간
+
+                Color barColor;
+                if (isSparse)
+                    barColor = Color.FromArgb(220, 80, 80);   // 빨강: 부족
+                else if (isCenter)
+                    barColor = Color.FromArgb(100, 180, 255); // 하늘: 직진
+                else
+                    barColor = Color.FromArgb(60, 130, 220);  // 파랑: 정상
+
+                using (var br = new SolidBrush(barColor))
+                    g.FillRectangle(br, x + 1, y, barW - 2, barH);
+
+                // 부족 구간 범위 수집
+                if (isSparse)
+                {
+                    double rangeStart = -1.0 + i * (2.0 / BUCKETS);
+                    double rangeEnd   = rangeStart + (2.0 / BUCKETS);
+                    sparseRanges.Add($"{rangeStart:+0.0;-0.0}~{rangeEnd:+0.0;-0.0}");
+                }
+            }
+
+            // X축 레이블 (-1.0, -0.5, 0, +0.5, +1.0)
+            using (var f  = new Font("Consolas", 7.5f))
+            using (var br = new SolidBrush(Color.FromArgb(150, 150, 150)))
+            {
+                string[] labels   = { "-1.0", "-0.5", "0", "+0.5", "+1.0" };
+                float[]  xRatios  = { 0f, 0.25f, 0.5f, 0.75f, 1.0f };
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    float lx  = PL + xRatios[i] * drawW;
+                    SizeF sz  = g.MeasureString(labels[i], f);
+                    g.DrawString(labels[i], f, br, lx - sz.Width / 2, PT + drawH + 4);
+                }
+            }
+
+            // 축 선
+            using (var pen = new Pen(Color.FromArgb(80, 80, 80), 1f))
+            {
+                g.DrawLine(pen, PL, PT + drawH, w - PR, PT + drawH); // X축
+                g.DrawLine(pen, PL, PT,          PL,    PT + drawH); // Y축
+            }
+
+            // 부족 구간 경고 텍스트
+            if (sparseRanges.Count > 0)
+            {
+                string warn = "⚠ 부족 구간: " + string.Join("  ", sparseRanges);
+                using (var f  = new Font("Segoe UI", 8f))
+                using (var br = new SolidBrush(Color.FromArgb(255, 160, 60)))
+                    g.DrawString(warn, f, br, PL, PT + drawH + 20);
             }
         }
     }

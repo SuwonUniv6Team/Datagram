@@ -83,12 +83,20 @@ namespace Datagram
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode != Keys.Space || IsEditingInput())
-                return;
+            if (IsEditingInput()) return;
 
-            e.Handled = true;
-            e.SuppressKeyPress = true;
-            TogglePlayback();
+            if (e.KeyCode == Keys.Space)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                TogglePlayback();
+            }
+            else if (e.KeyCode == Keys.R)
+            {
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                BtnRangeSelect_Click(null, EventArgs.Empty);
+            }
         }
 
         private bool IsEditingInput()
@@ -260,10 +268,14 @@ namespace Datagram
                 Arguments = $"\"{scriptPath}\" --image_folder \"{imageFolder}\" --epochs {(int)nudEpochs.Value}",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
+                RedirectStandardError  = true,
                 CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(scriptPath)
+                WorkingDirectory           = Path.GetDirectoryName(scriptPath),
+                StandardOutputEncoding     = System.Text.Encoding.UTF8,
+                StandardErrorEncoding      = System.Text.Encoding.UTF8
             };
+            psi.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+            psi.EnvironmentVariables["PYTHONUTF8"]       = "1";
 
             Process process = new Process();
             process.StartInfo = psi;
@@ -325,7 +337,10 @@ namespace Datagram
                         txtLog.AppendText($"✅ 학습 완료!{Environment.NewLine}");
                         appended = true;
                         if (_graphWindow != null && !_graphWindow.IsDisposed)
+                        {
                             _graphWindow.TrainFinished();
+                            _graphWindow.ShowAngleDistribution(frames);
+                        }
                     }
                     // [LOG], [ERROR], [GRAPH], 태그 없는 줄 → 메인 로그창에는 표시 안 함
                     // (그래프 옆 원본 로그창에서 확인 가능)
@@ -1782,6 +1797,8 @@ namespace Datagram
                 StandardOutputEncoding = System.Text.Encoding.UTF8,
                 StandardErrorEncoding  = System.Text.Encoding.UTF8
             };
+            psi.EnvironmentVariables["PYTHONIOENCODING"] = "utf-8";
+            psi.EnvironmentVariables["PYTHONUTF8"]       = "1";
 
             int count = 0;
             await Task.Run(() =>
