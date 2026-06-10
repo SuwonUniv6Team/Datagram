@@ -10,6 +10,12 @@ import glob
 import argparse
 import numpy as np
 
+# Windows에서 한글 경로/로그 깨짐 방지: stdout/stderr를 UTF-8로 강제
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 # TensorFlow 잡음 로그 억제
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -91,7 +97,10 @@ def load_dataset(data_dir, img_size=(120, 160)):
             missing_count += 1
             continue
 
-        img = cv2.imread(img_path)
+        # cv2.imread는 Windows에서 한글 경로를 지원하지 않으므로
+        # np.fromfile + imdecode 방식으로 읽음
+        raw = np.fromfile(img_path, dtype=np.uint8)
+        img = cv2.imdecode(raw, cv2.IMREAD_COLOR)
         if img is None:
             missing_count += 1
             continue
@@ -145,7 +154,22 @@ def build_donkey_model(input_shape=(120, 160, 3)):
 class ProgressCallback(callbacks.Callback):
     def __init__(self, total):
         super().__init__()
-        self.total = total
+        self.total = total          # 전체 epoch 수
+        self.cur_epoch = 0          # 현재 epoch
+        self.total_batches = 0      # epoch당 배치 수
+
+    def on_epoch_begin(self, epoch, logs=None):
+        self.cur_epoch = epoch + 1
+        self.total_batches = self.params.get("steps") or 0
+
+    def on_train_batch_end(self, batch, logs=None):
+        logs = logs or {}
+        b = batch + 1
+        # 10배치마다 + 마지막 배치에 진행 상황 출력
+        if self.total_batches and (b % 10 == 0 or b == self.total_batches):
+            print(f"[BATCH] epoch={self.cur_epoch}/{self.total} "
+                  f"batch={b}/{self.total_batches} "
+                  f"loss={logs.get('loss', 0):.4f}", flush=True)
 
     def on_epoch_end(self, epoch, logs=None):
         logs = logs or {}
