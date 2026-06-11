@@ -27,6 +27,7 @@ namespace Datagram
         private string _currentImageName = null;
         private Dictionary<string, double> _predictions = new Dictionary<string, double>();
         private string _loadedModelPath = null;
+        private string _currentDeleteSession = null;  // 현재 삭제 세션 타임스탬프
         private Process _trainProcess;
         private bool _isTraining = false;
 
@@ -814,6 +815,9 @@ namespace Datagram
                 "프레임 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (result == DialogResult.Yes)
             {
+                // 삭제 세션 타임스탬프 생성 (이 삭제 작업 전체를 하나의 세션으로 묶음)
+                _currentDeleteSession = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+
                 // 0. 한 번에 이미지 메모리 해제
                 AddLog("🔓 메모리에서 이미지 해제 중...");
                 try
@@ -960,15 +964,15 @@ namespace Datagram
                 {
                     try
                     {
-                                    // _deleted 폴더로 이동
-                        string deletedFolder = Path.Combine(currentFolder, "_deleted", "images");
+                        // _deleted/{세션타임스탬프}/images/ 폴더로 이동
+                        string sessionFolder = Path.Combine(currentFolder, "_deleted", _currentDeleteSession ?? DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                        string deletedFolder = Path.Combine(sessionFolder, "images");
                         Directory.CreateDirectory(deletedFolder);
                         string destPath = Path.Combine(deletedFolder, Path.GetFileName(imgPath));
-                                    // 같은 이름 있으면 덮어쓰기
                         if (File.Exists(destPath)) File.Delete(destPath);
                         File.Move(imgPath, destPath);
                         deleted = true;
-                        AddLog($"✓ 이미지 이동: {frame.ImagePath} → _deleted/images/");
+                        AddLog($"✓ 이미지 이동: {frame.ImagePath} → _deleted/{_currentDeleteSession}/images/");
                         return true;
                     }
                     catch (IOException ioEx)
@@ -1162,10 +1166,10 @@ namespace Datagram
 
                 if (originalLineCount != filteredLines.Length)
                 {
-                               // 삭제된 라인을 _deleted 폴더에 백업
-                    string deletedFolder = Path.Combine(currentFolder, "_deleted");
-                    Directory.CreateDirectory(deletedFolder);
-                    string backupCatalog = Path.Combine(deletedFolder, Path.GetFileName(catalogPath));
+                    // 삭제된 라인을 _deleted/{세션타임스탬프}/ 폴더에 백업
+                    string sessionFolder = Path.Combine(currentFolder, "_deleted", _currentDeleteSession ?? DateTime.Now.ToString("yyyyMMdd_HHmmss"));
+                    Directory.CreateDirectory(sessionFolder);
+                    string backupCatalog = Path.Combine(sessionFolder, Path.GetFileName(catalogPath));
                     var deletedLines = lines.Except(filteredLines).ToArray();
                     File.AppendAllLines(backupCatalog, deletedLines, Encoding.UTF8);
 
@@ -1930,100 +1934,176 @@ namespace Datagram
 
         private void BtnRestore_Click(object sender, EventArgs e)
         {
-            string deletedFolder = Path.Combine(currentFolder, "_deleted");
+            string deletedRoot = Path.Combine(currentFolder, "_deleted");
 
-            if (!Directory.Exists(deletedFolder))
+            if (!Directory.Exists(deletedRoot))
             {
                 MessageBox.Show("복원할 데이터가 없습니다.\n(_deleted 폴더 없음)", "알림");
                 return;
             }
 
-            var result = MessageBox.Show(
-                "_deleted 폴더의 모든 데이터를 복원하시겠습니까?",
-                "복원 확인", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            // 세션 목록 수집 (타임스탬프 서브폴더 + 구버전 루트 파일)
+            var sessions = new List<RestoreSession>();
 
-            if (result != DialogResult.Yes) return;
-
-            try
+            // 신버전: yyyyMMdd_HHmmss 형태의 서브폴더
+            foreach (string dir in Directory.GetDirectories(deletedRoot).OrderBy(d => d))
             {
-                int restoredImages = 0;
-                int restoredRecords = 0;
+                string name = Path.GetFileName(dir);
+                int imgCount = Directory.Exists(Path.Combine(dir, "images"))
+                    ? Directory.GetFiles(Path.Combine(dir, "images"), "*.jpg").Length : 0;
+                int recCount = Directory.GetFiles(dir, "*.catalog").Sum(f =>
+                    File.ReadAllLines(f, Encoding.UTF8).Count(l => !string.IsNullOrWhiteSpace(l)));
 
-                // 1. 이미지 복원
-                string deletedImages = Path.Combine(deletedFolder, "images");
-                if (Directory.Exists(deletedImages))
+                // yyyyMMdd_HHmmss → "2026-06-11 11:27:46" 형식으로 변환
+                string label = name;
+                if (name.Length == 15 && name[8] == '_' &&
+                    DateTime.TryParseExact(name, "yyyyMMdd_HHmmss",
+                        System.Globalization.CultureInfo.InvariantCulture,
+                        System.Globalization.DateTimeStyles.None, out DateTime dt))
+                    label = dt.ToString("yyyy-MM-dd HH:mm:ss");
+
+                sessions.Add(new RestoreSession
                 {
-                    foreach (string imgFile in Directory.GetFiles(deletedImages, "*.jpg"))
+                    FolderPath  = dir,
+                    DisplayName = $"{label}  ({imgCount}개 프레임)",
+                    IsLegacy    = false
+                });
+            }
+
+            // 구버전 호환: _deleted/ 루트에 직접 있는 .catalog 파일
+            var legacyCatalogs = Directory.GetFiles(deletedRoot, "*.catalog");
+            if (legacyCatalogs.Length > 0)
+            {
+                int legacyImgs = Directory.Exists(Path.Combine(deletedRoot, "images"))
+                    ? Directory.GetFiles(Path.Combine(deletedRoot, "images"), "*.jpg").Length : 0;
+                int legacyRecs = legacyCatalogs.Sum(f =>
+                    File.ReadAllLines(f, Encoding.UTF8).Count(l => !string.IsNullOrWhiteSpace(l)));
+                sessions.Add(new RestoreSession
+                {
+                    FolderPath  = deletedRoot,
+                    DisplayName = $"이전 삭제 (시간 불명)  ({legacyImgs}개 프레임)",
+                    IsLegacy    = true
+                });
+            }
+
+            if (sessions.Count == 0)
+            {
+                MessageBox.Show("복원할 세션이 없습니다.", "알림");
+                return;
+            }
+
+            // 세션 선택 다이얼로그
+            using (var picker = new RestorePickerDialog(sessions))
+            {
+                if (picker.ShowDialog(this) != DialogResult.OK) return;
+                var selected = picker.SelectedSessions;
+                if (selected.Count == 0) return;
+
+                try
+                {
+                    int restoredImages = 0, restoredRecords = 0;
+
+                    foreach (var session in selected)
+                        RestoreSession(session, ref restoredImages, ref restoredRecords);
+
+                    // _deleted 루트 정리 (완전히 비어있으면 삭제)
+                    TryCleanDeletedRoot(deletedRoot);
+
+                    AddLog($"✅ 복원 완료: 이미지 {restoredImages}개, 레코드 {restoredRecords}개");
+                    MessageBox.Show(
+                        $"복원 완료!\n이미지: {restoredImages}개\n레코드: {restoredRecords}개",
+                        "복원 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    LoadCatalog(currentFolder);
+                    if (_graphWindow != null && !_graphWindow.IsDisposed)
+                        _graphWindow.LoadFromFolder(currentFolder, frames);
+                }
+                catch (Exception ex)
+                {
+                    AddLog($"❌ 복원 실패: {ex.Message}");
+                    MessageBox.Show($"복원 중 오류 발생:\n{ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        private void RestoreSession(RestoreSession session, ref int restoredImages, ref int restoredRecords)
+        {
+            string sessionDir = session.FolderPath;
+
+            // 이미지 복원
+            string imgDir = Path.Combine(sessionDir, "images");
+            if (Directory.Exists(imgDir))
+            {
+                foreach (string imgFile in Directory.GetFiles(imgDir, "*.jpg"))
+                {
+                    string dest = Path.Combine(currentFolder, "images", Path.GetFileName(imgFile));
+                    if (!File.Exists(dest))
                     {
-                        string dest = Path.Combine(currentFolder, "images", Path.GetFileName(imgFile));
-                        if (!File.Exists(dest))
-                        {
-                            File.Move(imgFile, dest);
-                            restoredImages++;
-                        }
+                        File.Move(imgFile, dest);
+                        restoredImages++;
                     }
                 }
-
-                // 2. catalog 복원 (index 기준 정렬하여 원래 순서 유지)
-                foreach (string backupCatalog in Directory.GetFiles(deletedFolder, "*.catalog"))
-                {
-                    string originalCatalog = Path.Combine(currentFolder, Path.GetFileName(backupCatalog));
-                    if (File.Exists(originalCatalog))
-                    {
-                        var linesToRestore = File.ReadAllLines(backupCatalog, Encoding.UTF8)
-                            .Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
-
-                        // 기존 라인 + 복원 라인 합치기
-                        var allLines = File.ReadAllLines(originalCatalog, Encoding.UTF8)
-                            .Where(l => !string.IsNullOrWhiteSpace(l))
-                            .Concat(linesToRestore)
-                            .ToList();
-
-                        // index 필드 기준으로 정렬
-                        var sorted = allLines
-                            .Select(l => {
-                                int idx = int.MaxValue;
-                                try {
-                                    var m = System.Text.RegularExpressions.Regex.Match(l, @"""_index""\s*:\s*(\d+)");
-                                    if (!m.Success)
-                                        m = System.Text.RegularExpressions.Regex.Match(l, @"""index""\s*:\s*(\d+)");
-                                    if (m.Success) idx = int.Parse(m.Groups[1].Value);
-                                } catch { }
-                                return new { Line = l, Idx = idx };
-                            })
-                            .OrderBy(x => x.Idx)
-                            .Select(x => x.Line)
-                            .ToArray();
-
-                        File.WriteAllLines(originalCatalog, sorted, Encoding.UTF8);
-                        restoredRecords += linesToRestore.Count;
-                    }
-                    File.Delete(backupCatalog);
-                }
-
-                // 3. _deleted 폴더 정리
-                if (Directory.Exists(deletedImages) &&
-                    Directory.GetFiles(deletedImages).Length == 0)
-                    Directory.Delete(deletedImages);
-                if (Directory.GetFiles(deletedFolder).Length == 0 &&
-                    Directory.GetDirectories(deletedFolder).Length == 0)
-                    Directory.Delete(deletedFolder);
-
-                AddLog($"✅ 복원 완료: 이미지 {restoredImages}개, 레코드 {restoredRecords}개");
-                MessageBox.Show(
-                    $"복원 완료!\n이미지: {restoredImages}개\n레코드: {restoredRecords}개",
-                    "복원 완료", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                // 폴더 자동 재로드
-                LoadCatalog(currentFolder);
-                if (_graphWindow != null && !_graphWindow.IsDisposed)
-                    _graphWindow.LoadFromFolder(currentFolder, frames);
             }
-            catch (Exception ex)
+
+            // catalog 복원 (_index 기준 정렬)
+            foreach (string backupCatalog in Directory.GetFiles(sessionDir, "*.catalog"))
             {
-                AddLog($"❌ 복원 실패: {ex.Message}");
-                MessageBox.Show($"복원 중 오류 발생:\n{ex.Message}", "오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                string originalCatalog = Path.Combine(currentFolder, Path.GetFileName(backupCatalog));
+                if (File.Exists(originalCatalog))
+                {
+                    var linesToRestore = File.ReadAllLines(backupCatalog, Encoding.UTF8)
+                        .Where(l => !string.IsNullOrWhiteSpace(l)).ToList();
+
+                    var allLines = File.ReadAllLines(originalCatalog, Encoding.UTF8)
+                        .Where(l => !string.IsNullOrWhiteSpace(l))
+                        .Concat(linesToRestore)
+                        .ToList();
+
+                    var sorted = allLines
+                        .Select(l => {
+                            int idx = int.MaxValue;
+                            try {
+                                var m = System.Text.RegularExpressions.Regex.Match(l, @"""_index""\s*:\s*(\d+)");
+                                if (!m.Success)
+                                    m = System.Text.RegularExpressions.Regex.Match(l, @"""index""\s*:\s*(\d+)");
+                                if (m.Success) idx = int.Parse(m.Groups[1].Value);
+                            } catch { }
+                            return new { Line = l, Idx = idx };
+                        })
+                        .OrderBy(x => x.Idx)
+                        .Select(x => x.Line)
+                        .ToArray();
+
+                    File.WriteAllLines(originalCatalog, sorted, Encoding.UTF8);
+                    restoredRecords += linesToRestore.Count;
+                }
+                File.Delete(backupCatalog);
             }
+
+            // 세션 폴더 정리
+            if (!session.IsLegacy)
+            {
+                if (Directory.Exists(imgDir) && Directory.GetFiles(imgDir).Length == 0)
+                    Directory.Delete(imgDir);
+                if (Directory.Exists(sessionDir) &&
+                    Directory.GetFiles(sessionDir).Length == 0 &&
+                    Directory.GetDirectories(sessionDir).Length == 0)
+                    Directory.Delete(sessionDir);
+            }
+            else
+            {
+                // 구버전: 루트의 images 폴더만 정리
+                if (Directory.Exists(imgDir) && Directory.GetFiles(imgDir).Length == 0)
+                    Directory.Delete(imgDir);
+            }
+        }
+
+        private void TryCleanDeletedRoot(string deletedRoot)
+        {
+            if (!Directory.Exists(deletedRoot)) return;
+            if (Directory.GetFiles(deletedRoot).Length == 0 &&
+                Directory.GetDirectories(deletedRoot).Length == 0)
+                Directory.Delete(deletedRoot);
         }
 
         private string PrepareTrainingFolder()
@@ -2309,6 +2389,133 @@ namespace Datagram
         public override string ToString()
         {
             return $"[{FrameIndex}] {ImagePath}";
+        }
+    }
+
+    // 삭제 세션 정보
+    public class RestoreSession
+    {
+        public string FolderPath  { get; set; }
+        public string DisplayName { get; set; }
+        public bool   IsLegacy    { get; set; }
+    }
+
+    // 복원할 세션을 고르는 다이얼로그
+    public class RestorePickerDialog : Form
+    {
+        private CheckedListBox _list;
+        public List<RestoreSession> SelectedSessions { get; private set; } = new List<RestoreSession>();
+
+        public RestorePickerDialog(List<RestoreSession> sessions)
+        {
+            Text            = "복원할 삭제 세션 선택";
+            Size            = new Size(480, 320);
+            MinimumSize     = new Size(360, 240);
+            StartPosition   = FormStartPosition.CenterParent;
+            BackColor       = Color.FromArgb(30, 30, 30);
+            ForeColor       = Color.White;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox     = false;
+
+            var lbl = new Label
+            {
+                Text      = "복원할 세션을 선택하세요 (여러 개 선택 가능)",
+                Dock      = DockStyle.Top,
+                Height    = 30,
+                ForeColor = Color.FromArgb(180, 180, 180),
+                Font      = new Font("Segoe UI", 9f),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding   = new Padding(8, 0, 0, 0)
+            };
+
+            _list = new CheckedListBox
+            {
+                Dock            = DockStyle.Fill,
+                BackColor       = Color.FromArgb(22, 22, 22),
+                ForeColor       = Color.White,
+                Font            = new Font("Consolas", 10f),
+                BorderStyle     = BorderStyle.None,
+                CheckOnClick    = true
+            };
+
+            foreach (var s in sessions)
+            {
+                _list.Items.Add(s, true);   // 기본값: 모두 체크
+            }
+            _list.DisplayMember = "DisplayName";
+
+            var btnPanel = new Panel
+            {
+                Dock      = DockStyle.Bottom,
+                Height    = 46,
+                BackColor = Color.FromArgb(35, 35, 35)
+            };
+
+            var btnAll = new Button
+            {
+                Text      = "전체 선택",
+                Size      = new Size(80, 28),
+                Location  = new Point(8, 9),
+                BackColor = Color.FromArgb(55, 55, 55),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            btnAll.FlatAppearance.BorderSize = 0;
+            btnAll.Click += (s, e) => {
+                for (int i = 0; i < _list.Items.Count; i++) _list.SetItemChecked(i, true);
+            };
+
+            var btnNone = new Button
+            {
+                Text      = "전체 해제",
+                Size      = new Size(80, 28),
+                Location  = new Point(96, 9),
+                BackColor = Color.FromArgb(55, 55, 55),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
+            };
+            btnNone.FlatAppearance.BorderSize = 0;
+            btnNone.Click += (s, e) => {
+                for (int i = 0; i < _list.Items.Count; i++) _list.SetItemChecked(i, false);
+            };
+
+            var btnOk = new Button
+            {
+                Text        = "복원",
+                Size        = new Size(80, 28),
+                Anchor      = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor   = Color.FromArgb(0, 160, 80),
+                ForeColor   = Color.White,
+                FlatStyle   = FlatStyle.Flat,
+                DialogResult = DialogResult.OK
+            };
+            btnOk.FlatAppearance.BorderSize = 0;
+            btnOk.Location = new Point(btnPanel.Width - 176, 9);
+            btnOk.Anchor   = AnchorStyles.Top | AnchorStyles.Right;
+            btnOk.Click += (s, e) => {
+                SelectedSessions = _list.CheckedItems.Cast<RestoreSession>().ToList();
+                DialogResult = DialogResult.OK;
+            };
+
+            var btnCancel = new Button
+            {
+                Text         = "취소",
+                Size         = new Size(80, 28),
+                Anchor       = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor    = Color.FromArgb(80, 80, 80),
+                ForeColor    = Color.White,
+                FlatStyle    = FlatStyle.Flat,
+                DialogResult = DialogResult.Cancel
+            };
+            btnCancel.FlatAppearance.BorderSize = 0;
+            btnCancel.Location = new Point(btnPanel.Width - 88, 9);
+            btnCancel.Anchor   = AnchorStyles.Top | AnchorStyles.Right;
+
+            btnPanel.Controls.AddRange(new Control[] { btnAll, btnNone, btnOk, btnCancel });
+
+            Controls.Add(_list);
+            Controls.Add(btnPanel);
+            Controls.Add(lbl);
         }
     }
 }
